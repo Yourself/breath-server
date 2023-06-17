@@ -4,8 +4,7 @@ import { QueryParams, createDB, hasAQData } from './data';
 
 const LISTEN_PORT = parseInt(process.env.LISTEN_PORT ?? '3000', 10);
 
-const DB_FILENAME =
-  process.env.NODE_ENV === 'development' ? 'dev.db' : 'prod.db';
+const DB_FILENAME = process.env.NODE_ENV === 'development' ? 'dev.db' : 'prod.db';
 
 const db = createDB(path.join(__dirname, '..', 'data', DB_FILENAME));
 
