@@ -34,7 +34,7 @@ app.post('/restricted/submit/:device', (req, res) => {
   res.sendStatus(200);
 });
 
-app.put('/restriced/update-device/:device', (req, res) => {
+app.put('/restricted/update-device/:device', (req, res) => {
   const id = req.params.device;
   if (!isDeviceIdValid(id)) {
     res.status(400).send({ error: 'Invalid device ID' });
