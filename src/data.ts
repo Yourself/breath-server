@@ -13,6 +13,8 @@ export interface SensorValue {
   rhum?: number;
 }
 
+const VALUE_KEYS = ['rco2', 'pm02', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
+
 interface SensorReading extends SensorValue {
   id: string;
 }
@@ -78,8 +80,7 @@ export class AirQualityDB {
 
   insertAirQuality(id: string, quality: SensorValue) {
     const data = { id, ...quality };
-    const keys = ['rco2', 'pm02', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
-    for (const key of keys) {
+    for (const key of VALUE_KEYS) {
       if (!(key in data)) {
         data[key] = undefined;
       }
@@ -92,9 +93,8 @@ export class AirQualityDB {
   }
 
   updateDeviceMetadata(id: string, metadata: SensorMetadataUpdate) {
-    const keys = ['rco2', 'pm02', 'tvoc', 'nox', 'atmp', 'rhum'];
     const updates = [];
-    for (const key of keys) {
+    for (const key of VALUE_KEYS) {
       if (key in metadata) {
         updates.push(`${key} = $${key}`);
       }
