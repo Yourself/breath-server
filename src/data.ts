@@ -15,16 +15,19 @@ interface SensorReading extends SensorValue {
   id: string;
 }
 
-export interface SensorMetadata {
+type SensorCapabilities = {
+  [K in keyof SensorValue as K extends string ? `has_${K}` : never]-?: boolean;
+};
+
+export interface SensorMetadata extends SensorCapabilities {
   id: string;
   name?: string;
-  has_rco2: boolean;
-  has_pm02: boolean;
-  has_tvoc: boolean;
-  has_nox: boolean;
-  has_atmp: boolean;
-  has_rhum: boolean;
+  is_hidden: boolean;
 }
+
+export type SensorMetadataUpdate = {
+  [K in keyof Omit<SensorMetadata, "id">]?: SensorMetadata[K];
+};
 
 export interface QueryParams {
   start?: Date;
@@ -32,15 +35,9 @@ export interface QueryParams {
   device?: string | string[];
 }
 
-interface AQLogRow {
+interface AQLogRow extends SensorValue {
   time: string;
   id: string;
-  rco2?: number;
-  pm02?: number;
-  tvoc?: number;
-  nox?: number;
-  atmp?: number;
-  rhum?: number;
 }
 
 export interface SensorTimePoint extends SensorValue {
@@ -61,8 +58,6 @@ export class AirQualityDB {
 
   private readonly devices: Database.Statement<[]>;
 
-  private readonly updateDevice: Database.Statement<SensorMetadata>;
-
   constructor() {
     this._db = new Database(path.join(__dirname, "..", "data", "data.db"));
     this.insertAQ = this._db.prepare<SensorReading>(`
@@ -72,16 +67,6 @@ export class AirQualityDB {
       INSERT INTO sensors (id)
            SELECT $id WHERE NOT EXISTS (SELECT * FROM sensors WHERE id = $id)`);
     this.devices = this._db.prepare("SELECT * FROM sensors");
-    this.updateDevice = this._db.prepare(`
-      UPDATE sensors
-      SET name = $name,
-          has_rco2 = $has_rco2,
-          has_pm02 = $has_pm02,
-          has_tvoc = $has_tvoc,
-          has_nox = $has_nox,
-          has_atmp = $has_atmp,
-          has_rhum = $has_rhum
-      WHERE id = $id`);
   }
 
   initTables() {
@@ -101,8 +86,19 @@ export class AirQualityDB {
     return this.devices.all() as SensorMetadata[];
   }
 
-  updateDeviceMetadata(metadata: SensorMetadata) {
-    this.updateDevice.run(metadata);
+  updateDeviceMetadata(id: string, metadata: SensorMetadataUpdate) {
+    const keys = ["rco2", "pm02", "tvoc", "nox", "atmp", "rhum"];
+    const updates = [];
+    for (const key of keys) {
+      if (key in metadata) {
+        updates.push(`${key} = $${key}`);
+      }
+    }
+    if (updates.length === 0) return;
+    const setClause = updates.join(", ");
+    this._db
+      .prepare(`UPDATE devices SET ${setClause} WHERE id = $id`)
+      .run({ id, ...metadata });
   }
 
   getReadings(query: QueryParams): SensorTimeSeries[] {
@@ -128,12 +124,25 @@ export class AirQualityDB {
     } else if (query.device != null) {
       conditions.push("id = ?");
       values.push(query.device);
+    } else {
+      conditions.push("id IN (SELECT id FROM sensors WHERE is_hidden = 0)");
     }
 
     const allConditions = conditions.map((c) => `(${c})`).join(" AND ");
     const sql = `SELECT * FROM air_quality_log WHERE ${allConditions}`;
     const rows = this._db.prepare(sql).all(...values) as AQLogRow[];
     const seriesById = new Map<string, SensorTimePoint[]>();
+
+    if (query.device != null) {
+      if (Array.isArray(query.device)) {
+        for (const device of query.device) {
+          seriesById.set(device, []);
+        }
+      } else {
+        seriesById.set(query.device, []);
+      }
+    }
+
     for (const row of rows) {
       const time = new Date(row.time);
       const { rco2, pm02, tvoc, nox, atmp, rhum } = row;
@@ -154,9 +163,7 @@ export class AirQualityDB {
   }
 }
 
-export function hasAQData(obj: NonNullable<unknown>): obj is SensorReading {
-  if (!("id" in obj)) return false;
-
+export function hasAQData(obj: NonNullable<unknown>): obj is SensorValue {
   if ("rco2" in obj) return true;
   if ("pm02" in obj) return true;
   if ("tvoc" in obj) return true;
