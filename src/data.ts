@@ -20,7 +20,7 @@ interface SensorReading extends SensorValue {
 }
 
 type SensorCapabilities = {
-  [K in keyof SensorValue as K extends string ? `has_${K}` : never]-?: boolean;
+  [K in keyof SensorValue as K extends string ? `has_${K}` : never]?: boolean;
 };
 
 export interface SensorMetadata extends SensorCapabilities {
@@ -32,6 +32,10 @@ export interface SensorMetadata extends SensorCapabilities {
 export type SensorMetadataUpdate = {
   [K in keyof Omit<SensorMetadata, 'id'>]?: SensorMetadata[K];
 };
+
+type SensorMetadataUpdateRow = {
+  [K in keyof Omit<SensorMetadata, 'id' | 'name'>]?: number;
+} & { name?: string };
 
 export interface QueryParams {
   start?: Date;
@@ -94,14 +98,20 @@ export class AirQualityDB {
 
   updateDeviceMetadata(id: string, metadata: SensorMetadataUpdate) {
     const updates = [];
-    for (const key of VALUE_KEYS) {
+    const updateValues: SensorMetadataUpdateRow = {};
+    for (const key of VALUE_KEYS.map((k) => `has_${k}` as const)) {
       if (key in metadata) {
         updates.push(`${key} = $${key}`);
+        updateValues[key] = metadata[key] ? 1 : 0;
       }
+    }
+    if ('is_hidden' in metadata) {
+      updates.push(`is_hidden = $is_hidden`);
+      updateValues.is_hidden = metadata.is_hidden ? 1 : 0;
     }
     if (updates.length === 0) return;
     const setClause = updates.join(', ');
-    this._db.prepare(`UPDATE devices SET ${setClause} WHERE id = $id`).run({ id, ...metadata });
+    this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
   }
 
   getReadings(query: QueryParams): SensorTimeSeries[] {

@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { QueryParams, createDB, hasAQData } from './data';
+import { QueryParams, SensorMetadataUpdate, createDB, hasAQData } from './data';
 
 const LISTEN_PORT = parseInt(process.env.LISTEN_PORT ?? '3000', 10);
 
@@ -12,6 +12,26 @@ const app = express();
 
 function isDeviceIdValid(id: string) {
   return !/^\s+$/.test(id);
+}
+
+function parseBoolean(val: string | number | boolean): boolean {
+  if (typeof val === 'string') {
+    if (/^\s*\d+\s*$/.test(val)) {
+      return parseInt(val, 10) !== 0;
+    }
+
+    return val.toLowerCase() === 'true';
+  }
+
+  if (typeof val === 'number') {
+    return val !== 0;
+  }
+
+  if (typeof val === 'boolean') {
+    return val;
+  }
+
+  throw new Error(`Could not parse boolean from '${val}'`);
 }
 
 app.use(express.static(path.join(__dirname, '..', 'dist')));
@@ -40,7 +60,21 @@ app.put('/restricted/update-device/:device', (req, res) => {
     res.status(400).send({ error: 'Invalid device ID' });
     return;
   }
-  db.updateDeviceMetadata(id, req.query);
+  // const { name, is_hidden, has_rco2, has_pm02, has_tvoc, has_nox, has_atmp, has_rhum } = req.query;
+  const update: SensorMetadataUpdate = {};
+  const booleanKeys = ['is_hidden', 'has_rco2', 'has_pm02', 'has_tvoc', 'has_nox', 'has_atmp', 'has_rhum'] as const;
+  for (const key of booleanKeys) {
+    const val = req.query[key];
+    if (val != null) {
+      update[key] = parseBoolean(val.toString());
+    }
+  }
+  const { name } = req.query;
+  if (name != null) {
+    update.name = name.toString();
+  }
+  db.updateDeviceMetadata(id, update);
+  res.sendStatus(200);
 });
 
 app.get('/devices', (_, res) => {
