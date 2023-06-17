@@ -1,5 +1,7 @@
 FROM node:18
 
+ARG LISTEN_PORT=3000
+
 WORKDIR /home/breath-server
 
 COPY package*.json ./

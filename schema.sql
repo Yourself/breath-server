@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS air_quality_log (
   time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   id TEXT NOT NULL,
-  rco2 INT,
-  pm02 INT,
-  tvoc INT,
-  nox INT,
+  rco2 REAL,
+  pm02 REAL,
+  tvoc REAL,
+  nox REAL,
   atmp REAL,
   rhum REAL
 );
@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS air_quality_log (
 CREATE TABLE IF NOT EXISTS sensors (
   id TEXT NOT NULL UNIQUE,
   name TEXT,
-  has_rco2 BOOLEAN NOT NULL DEFAULT 0,
-  has_pm02 BOOLEAN NOT NULL DEFAULT 0,
-  has_tvoc BOOLEAN NOT NULL DEFAULT 0,
-  has_nox BOOLEAN NOT NULL DEFAULT 0,
-  has_atmp BOOLEAN NOT NULL DEFAULT 0,
-  has_rhum BOOLEAN NOT NULL DEFAULT 0,
+  has_rco2 BOOLEAN,
+  has_pm02 BOOLEAN,
+  has_tvoc BOOLEAN,
+  has_nox BOOLEAN,
+  has_atmp BOOLEAN,
+  has_rhum BOOLEAN,
   is_hidden BOOLEAN NOT NULL DEFAULT 0
 )
