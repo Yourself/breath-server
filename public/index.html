@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Breath Server</title>
+  </head>
+  <body>
+    <h1>Breath Server API</h1>
+
+    <h2>GET /api/devices</h2>
+
+    <h3 style="margin-left: 40px">Result:</h3>
+
+    <p style="margin-left: 40px">JSON array of device information</p>
+
+    <table border="1" cellpadding="4" cellspacing="1" style="width: 75%">
+      <thead>
+        <tr>
+          <th scope="col">
+            <p>Property</p>
+          </th>
+          <th scope="col">Type</th>
+          <th scope="col">Required</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">id</td>
+          <td style="text-align: center">string</td>
+          <td style="text-align: center">Yes</td>
+          <td>The device ID of the sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">name</td>
+          <td style="text-align: center">string</td>
+          <td style="text-align: center">No</td>
+          <td>A human readable name</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">is_hidden</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">Yes</td>
+          <td>
+            <p>Whether this device is hidden by default in queries</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_rco2</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a CO2 sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_pm02</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a PM2.5 sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_tvoc</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a TVOC sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_nox</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a NOX sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_atmp</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a temperature sensor</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_rhum</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has a relative humidity sensor</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>&nbsp;</p>
+
+    <h2>GET /api/query</h2>
+
+    <h3 style="margin-left: 40px">Query Parameters:</h3>
+
+    <table border="1" cellpadding="4" cellspacing="1" style="width: 75%">
+      <thead>
+        <tr>
+          <th scope="col">Parameter</th>
+          <th scope="col">Type</th>
+          <th scope="col">Default Value</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">start</td>
+          <td style="text-align: center">timestamp</td>
+          <td style="text-align: center">Now minus 1 day</td>
+          <td>The start of the time span being queried</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">end</td>
+          <td style="text-align: center">timestamp</td>
+          <td style="text-align: center">Now</td>
+          <td>The end of the time span being queried</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">device</td>
+          <td style="text-align: center">string</td>
+          <td style="text-align: center">All devices</td>
+          <td>The devices to query, this parameter can appear more than once</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">points</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">1440</td>
+          <td>The maximum number of data points to return for each device</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-left: 40px">Result:</h3>
+
+    <p style="margin-left: 40px">JSON array of devices with a time series of readings</p>
+
+    <table border="1" cellpadding="4" cellspacing="1" style="width: 75%">
+      <caption>
+        Device Time Series
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Property</th>
+          <th scope="col">Type</th>
+          <th scope="col">Required</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">id</td>
+          <td style="text-align: center">string</td>
+          <td style="text-align: center">Yes</td>
+          <td>The device id for the time series</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">series</td>
+          <td style="text-align: center">TimePoint[]</td>
+          <td style="text-align: center">Yes</td>
+          <td>An array of time points containing sensor readings</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>&nbsp;</p>
+
+    <table border="1" cellpadding="4" cellspacing="1" style="width: 75%">
+      <caption>
+        TimePoint
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Property</th>
+          <th scope="col">Type</th>
+          <th scope="col">Required</th>
+          <th scope="col">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">time</td>
+          <td style="text-align: center">timestamp</td>
+          <td style="text-align: center">Yes</td>
+          <td>The time stamp for this point</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">rco2</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured CO2 concentration in ppm</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">pm02</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured PM2.5 concentration in &micro;g/m&sup3;</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">tvoc</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured TVOC index</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">nox</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured NOX index</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">atmp</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured temperature in &deg;C</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">rhum</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured relative humidity in %</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -38,10 +38,6 @@ app.use(express.static(path.join(__dirname, '..', 'dist')));
 app.use('/api', express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json());
 
-app.get('/api', (_, res) => {
-  res.send('Breath Server API');
-});
-
 app.post('/api/restricted/submit/:device', (req, res) => {
   if (!isDeviceIdValid(req.params.device)) {
     res.status(400).send({ error: 'Invalid device ID' });
