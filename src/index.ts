@@ -37,11 +37,11 @@ function parseBoolean(val: string | number | boolean): boolean {
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 app.use(express.json());
 
-app.get('/', (_, res) => {
-  res.send('Breath Server');
+app.get('/api', (_, res) => {
+  res.send('Breath Server API');
 });
 
-app.post('/restricted/submit/:device', (req, res) => {
+app.post('/api/restricted/submit/:device', (req, res) => {
   if (!isDeviceIdValid(req.params.device)) {
     res.status(400).send({ error: 'Invalid device ID' });
     return;
@@ -54,7 +54,7 @@ app.post('/restricted/submit/:device', (req, res) => {
   res.sendStatus(200);
 });
 
-app.put('/restricted/update-device/:device', (req, res) => {
+app.put('/api/restricted/update-device/:device', (req, res) => {
   const id = req.params.device;
   if (!isDeviceIdValid(id)) {
     res.status(400).send({ error: 'Invalid device ID' });
@@ -77,11 +77,11 @@ app.put('/restricted/update-device/:device', (req, res) => {
   res.sendStatus(200);
 });
 
-app.get('/devices', (_, res) => {
+app.get('/api/devices', (_, res) => {
   res.send(db.getDevices());
 });
 
-app.get('/query', (req, res) => {
+app.get('/api/query', (req, res) => {
   const results = db.getReadings(req.query as QueryParams);
   res.send(results);
 });
