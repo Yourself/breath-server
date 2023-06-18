@@ -38,9 +38,10 @@ type SensorMetadataUpdateRow = {
 } & { name?: string };
 
 export interface QueryParams {
-  start?: Date;
-  end?: Date;
+  start?: string;
+  end?: string;
   device?: string | string[];
+  points?: string;
 }
 
 interface AQLogRow extends SensorValue {
@@ -57,12 +58,97 @@ export interface SensorTimeSeries {
   series: SensorTimePoint[];
 }
 
+function parseInteger(s?: string) {
+  if (s != null && /^\s*\d+\s*$/.test(s)) {
+    return parseInt(s, 10);
+  }
+  return undefined;
+}
+
+function median(values: number[]) {
+  if (values.length === 0) {
+    return undefined;
+  }
+  if (values.length === 1) {
+    return values[0];
+  }
+  if (values.length === 2) {
+    return 0.5 * (values[0] + values[1]);
+  }
+  const sorted = values.slice().sort((a, b) => a - b);
+  const mid = Math.trunc(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[mid];
+  }
+  return 0.5 * (sorted[mid - 1] + sorted[mid]);
+}
+
+function filterSeries(series: SensorTimePoint[], points: number) {
+  if (series.length <= points) {
+    return series;
+  }
+  let baseMS = series[0].time.getTime();
+  const spanMS = series[series.length - 1].time.getTime() - baseMS;
+  const windowMS = spanMS / points;
+  type SensorValues = { [K in keyof SensorValue]-?: number[] };
+
+  const accum: SensorValues = {
+    rco2: [],
+    pm02: [],
+    tvoc: [],
+    nox: [],
+    atmp: [],
+    rhum: [],
+  };
+  const filtered: SensorTimePoint[] = [];
+  const pushValue = (pt: SensorValue) => {
+    for (const key of VALUE_KEYS) {
+      const value = pt[key];
+      if (value != null) {
+        accum[key].push(value);
+      }
+    }
+  };
+  const applyFilter = (time: Date) => {
+    const pt: SensorTimePoint = {
+      time,
+    };
+    let hasKeys = false;
+    for (const key of VALUE_KEYS) {
+      const m = median(accum[key]);
+      if (m != null) {
+        pt[key] = m;
+        hasKeys = true;
+      }
+      accum[key] = [];
+    }
+    if (hasKeys) {
+      filtered.push(pt);
+    }
+  };
+
+  for (let i = 0; i < series.length; i += 1) {
+    const { time } = series[i];
+    if (time.getTime() >= baseMS + windowMS) {
+      baseMS += windowMS;
+      applyFilter(new Date(baseMS));
+    }
+    pushValue(series[i]);
+  }
+
+  applyFilter(series[series.length - 1].time);
+
+  return filtered;
+}
+
 export class AirQualityDB {
   private readonly _db: Database.Database;
 
   private readonly insert: Database.Transaction<(_: SensorReading) => void>;
 
   private readonly devices: Database.Statement<[]>;
+
+  private readonly delete: Database.Transaction<(id: string) => void>;
 
   constructor(db: Database.Database) {
     this._db = db;
@@ -80,6 +166,14 @@ export class AirQualityDB {
     });
 
     this.devices = this._db.prepare('SELECT * FROM sensors');
+
+    const deleteReadings = this._db.prepare<string>(`DELETE FROM air_quality_log WHERE id = ?`);
+    const deleteSensor = this._db.prepare<string>(`DELETE FROM sensors WHERE id = ?`);
+
+    this.delete = this._db.transaction((id) => {
+      deleteReadings.run(id);
+      deleteSensor.run(id);
+    });
   }
 
   insertAirQuality(id: string, quality: SensorValue) {
@@ -112,6 +206,10 @@ export class AirQualityDB {
     if (updates.length === 0) return;
     const setClause = updates.join(', ');
     this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
+  }
+
+  removeDevice(id: string) {
+    this.delete(id);
   }
 
   getReadings(query: QueryParams): SensorTimeSeries[] {
@@ -168,9 +266,11 @@ export class AirQualityDB {
       series.push(point);
     }
 
+    const points = parseInteger(query.points) ?? 1440;
+
     const result = [];
     for (const [id, series] of seriesById.entries()) {
-      result.push({ id, series });
+      result.push({ id, series: filterSeries(series, points) });
     }
     return result;
   }

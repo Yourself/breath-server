@@ -35,6 +35,7 @@ function parseBoolean(val: string | number | boolean): boolean {
 }
 
 app.use(express.static(path.join(__dirname, '..', 'dist')));
+app.use('/api', express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json());
 
 app.get('/api', (_, res) => {
@@ -74,6 +75,15 @@ app.put('/api/restricted/update-device/:device', (req, res) => {
     update.name = name.toString();
   }
   db.updateDeviceMetadata(id.toLowerCase(), update);
+  res.sendStatus(200);
+});
+
+app.delete('/api/restricted/delete/:device', (req, res) => {
+  const id = req.params.device;
+  if (!isDeviceIdValid(id)) {
+    res.status(400).send({ error: 'Invalid device ID' });
+  }
+  db.removeDevice(id);
   res.sendStatus(200);
 });
 
