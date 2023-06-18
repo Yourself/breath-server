@@ -50,7 +50,7 @@ app.post('/api/restricted/submit/:device', (req, res) => {
     res.status(400).send({ error: 'Missing air quality data' });
     return;
   }
-  db.insertAirQuality(req.params.device, req.body);
+  db.insertAirQuality(req.params.device.toLowerCase(), req.body);
   res.sendStatus(200);
 });
 
@@ -73,7 +73,7 @@ app.put('/api/restricted/update-device/:device', (req, res) => {
   if (name != null) {
     update.name = name.toString();
   }
-  db.updateDeviceMetadata(id, update);
+  db.updateDeviceMetadata(id.toLowerCase(), update);
   res.sendStatus(200);
 });
 
