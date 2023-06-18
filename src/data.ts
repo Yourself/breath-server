@@ -14,6 +14,7 @@ export interface SensorValue {
 }
 
 const VALUE_KEYS = ['rco2', 'pm02', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
+const CAPABILITY_KEYS = VALUE_KEYS.map((k) => `has_${k}` as const);
 
 interface SensorReading extends SensorValue {
   id: string;
@@ -22,6 +23,12 @@ interface SensorReading extends SensorValue {
 type SensorCapabilities = {
   [K in keyof SensorValue as K extends string ? `has_${K}` : never]?: boolean;
 };
+
+type SensorsRow = {
+  id: string;
+  name?: string;
+  is_hidden: number;
+} & { [K in keyof SensorCapabilities]?: number };
 
 export interface SensorMetadata extends SensorCapabilities {
   id: string;
@@ -187,13 +194,26 @@ export class AirQualityDB {
   }
 
   getDevices() {
-    return this.devices.all() as SensorMetadata[];
+    const rows = this.devices.all() as SensorsRow[];
+    const result: SensorMetadata[] = [];
+    for (const row of rows) {
+      const { id, name, is_hidden } = row;
+      const metadata: SensorMetadata = { id, name, is_hidden: is_hidden !== 0 };
+      for (const key of CAPABILITY_KEYS) {
+        const value = row[key];
+        if (value != null) {
+          metadata[key] = value !== 0;
+        }
+      }
+      result.push(metadata);
+    }
+    return result;
   }
 
   updateDeviceMetadata(id: string, metadata: SensorMetadataUpdate) {
     const updates = [];
     const updateValues: SensorMetadataUpdateRow = {};
-    for (const key of VALUE_KEYS.map((k) => `has_${k}` as const)) {
+    for (const key of CAPABILITY_KEYS) {
       if (key in metadata) {
         updates.push(`${key} = $${key}`);
         updateValues[key] = metadata[key] ? 1 : 0;

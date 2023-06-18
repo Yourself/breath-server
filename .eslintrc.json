@@ -42,6 +42,7 @@
         "argsIgnorePattern": "^_"
       }
     ],
+    "@typescript-eslint/naming-convention": "off",
     "prettier/prettier": "error"
   }
 }
