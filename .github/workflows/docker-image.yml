@@ -21,9 +21,12 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: actions/checkout@v3
-      - name: Build and push
+      - name: Build
         uses: docker/build-push-action@v4
         with:
           context: .
-          push: true
+        #   push: true
           tags: docker.samsarabarandgrill.com/yourself/breath-server:latest
+      - name: Push
+        run: |
+            docker push docker.samsarabarandgrill.com/yourself/breath-server:latest
