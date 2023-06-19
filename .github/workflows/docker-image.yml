@@ -1,0 +1,29 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+
+  build-and-push:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    -
+        name: Login to registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.samsarabarandgrill.com
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+    - uses: actions/checkout@v3
+    -
+        name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: yourself/breath-server:latest
+      
+      
