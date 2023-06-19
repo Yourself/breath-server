@@ -90,13 +90,14 @@ function median(values: number[]) {
   return 0.5 * (sorted[mid - 1] + sorted[mid]);
 }
 
-function filterSeries(series: SensorTimePoint[], points: number) {
-  if (series.length <= points) {
+function filterSeries(series: SensorTimePoint[], numPoints: number) {
+  if (series.length <= numPoints) {
     return series;
   }
   let baseMS = series[0].time.getTime();
-  const spanMS = series[series.length - 1].time.getTime() - baseMS;
-  const windowMS = spanMS / points;
+  const endTime = series[series.length - 1].time;
+  const spanMS = endTime.getTime() - baseMS;
+  let windowMS = spanMS / numPoints;
   type SensorValues = { [K in keyof SensorValue]-?: number[] };
 
   const accum: SensorValues = {
@@ -132,18 +133,28 @@ function filterSeries(series: SensorTimePoint[], points: number) {
     if (hasKeys) {
       filtered.push(pt);
     }
+    return hasKeys;
   };
 
   for (let i = 0; i < series.length; i += 1) {
+    const remaining = numPoints - filtered.length;
     const { time } = series[i];
     if (time.getTime() >= baseMS + windowMS) {
       baseMS += windowMS;
-      applyFilter(new Date(baseMS));
+      if (!applyFilter(new Date(baseMS))) {
+        baseMS = time.getTime();
+        windowMS = (endTime.getTime() - baseMS) / remaining;
+      }
+    }
+    if (remaining > series.length - i) {
+      applyFilter(new Date(baseMS + windowMS));
+      filtered.push(...series.slice(i));
+      return filtered;
     }
     pushValue(series[i]);
   }
 
-  applyFilter(series[series.length - 1].time);
+  applyFilter(endTime);
 
   return filtered;
 }
