@@ -3,7 +3,6 @@ name: Docker Image CI
 on:
   push:
     branches: ['main']
-  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -16,8 +15,6 @@ jobs:
           registry: docker.samsarabarandgrill.com
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
       - uses: actions/checkout@v3
       - name: Build and push
         uses: docker/build-push-action@v4
@@ -25,7 +22,3 @@ jobs:
           context: .
           push: true
           tags: docker.samsarabarandgrill.com/yourself/breath-server:latest
-    #   - name: Build and push
-    #     run: |
-    #         docker build -t docker.samsarabarandgrill.com/yourself/breath-server:latest .
-    #         docker push docker.samsarabarandgrill.com/yourself/breath-server:latest
