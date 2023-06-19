@@ -223,6 +223,10 @@ export class AirQualityDB {
       updates.push(`is_hidden = $is_hidden`);
       updateValues.is_hidden = metadata.is_hidden ? 1 : 0;
     }
+    if ('name' in metadata) {
+      updates.push(`name = $name`);
+      updateValues.name = metadata.name;
+    }
     if (updates.length === 0) return;
     const setClause = updates.join(', ');
     this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
