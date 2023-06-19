@@ -139,7 +139,7 @@ function filterSeries(series: SensorTimePoint[], numPoints: number) {
   for (let i = 0; i < series.length; i += 1) {
     const remaining = numPoints - filtered.length;
     const { time } = series[i];
-    if (time.getTime() >= baseMS + windowMS) {
+    if (time.getTime() > baseMS + windowMS) {
       baseMS += windowMS;
       if (!applyFilter(new Date(baseMS))) {
         baseMS = time.getTime();
