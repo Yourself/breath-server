@@ -29,4 +29,5 @@ jobs:
     #       tags: docker.samsarabarandgrill.com/yourself/breath-server:latest
       - name: Build and push
         run: |
-            docker build -t docker.samsarabarandgrill.com/yourself/breath-server:latest --push .
+            docker build -t docker.samsarabarandgrill.com/yourself/breath-server:latest .
+            docker push docker.samsarabarandgrill.com/yourself/breath-server:latest
