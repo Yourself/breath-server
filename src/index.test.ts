@@ -126,9 +126,9 @@ describe('mutable routes', () => {
       expect(error).toMatch(/invalid/i);
     });
 
-    test('update-device', async () => {
+    test('update', async () => {
       const id = 'invalid id';
-      const res = await request(app).put(`/api/restricted/update-device/${id}`);
+      const res = await request(app).put(`/api/restricted/update/${id}`);
       expect(res.error).toBeTruthy();
       const { error } = expectJsonObject<{ error: string }>(res, 'error');
       expect(error).toMatch(/invalid/i);
@@ -182,7 +182,7 @@ describe('mutable routes', () => {
         expect(series[0]).toMatchObject(payload);
       }
       {
-        const res = await request(app).put(`/api/restricted/update-device/${id}?name=${name}&is_hidden=1`);
+        const res = await request(app).put(`/api/restricted/update/${id}?name=${name}&is_hidden=1`);
         expect(res.ok).toBeTruthy();
       }
       {
@@ -274,7 +274,28 @@ describe('mutable routes', () => {
           expect(res.ok).toBeTruthy();
         }
         {
-          const res = await request(app).put(`/api/restricted/update-device/${id}?${toQuery(capabilities)}`);
+          const res = await request(app).put(`/api/restricted/update/${id}?${toQuery(capabilities)}`);
+          expect(res.ok).toBeTruthy();
+        }
+        {
+          const res = await request(app).get('/api/devices');
+          expect(res.ok).toBeTruthy();
+          const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+          expect(body[0].id).toEqual(id);
+          expect(body[0].is_hidden).toBeFalsy();
+          expect(body[0]).toMatchObject(capabilities);
+        }
+      });
+
+      test('it can auto update device', async () => {
+        const app = createBreathServer();
+        const allRes = await submitFakeData(app);
+        expect(allRes).toHaveLength(numPts);
+        for (const res of allRes) {
+          expect(res.ok).toBeTruthy();
+        }
+        {
+          const res = await request(app).put(`/api/restricted/auto-update/${id}`);
           expect(res.ok).toBeTruthy();
         }
         {
@@ -429,8 +450,6 @@ describe('mutable routes', () => {
       has_pm02: true,
       has_atmp: true,
       has_rhum: true,
-      has_tvoc: false,
-      has_nox: false,
     };
     const payloads = Array.from(Array(numPts)).map((_) => createSensorChannels(capabilities, numChannels));
 
@@ -511,7 +530,7 @@ describe('mutable routes', () => {
       }
       {
         const query = { channels: numChannels };
-        const res = await request(app).put(`/api/restricted/update-device/${id}?${toQuery(query)}`);
+        const res = await request(app).put(`/api/restricted/update/${id}?${toQuery(query)}`);
         expect(res.ok).toBeTruthy();
       }
       {
@@ -520,6 +539,27 @@ describe('mutable routes', () => {
         const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'channels');
         expect(body[0].id).toEqual(id);
         expect(body[0].channels).toEqual(numChannels);
+      }
+    });
+
+    test('it can auto update metadata', async () => {
+      const app = createBreathServer();
+      const allRes = await submitFakeData(app);
+      expect(allRes).toHaveLength(numPts);
+      for (const res of allRes) {
+        expect(res.ok).toBeTruthy();
+      }
+      {
+        const res = await request(app).put(`/api/restricted/auto-update/${id}`);
+        expect(res.ok).toBeTruthy();
+      }
+      {
+        const res = await request(app).get(`/api/devices`);
+        expect(res.ok).toBeTruthy();
+        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'channels');
+        expect(body[0].id).toEqual(id);
+        expect(body[0].channels).toEqual(numChannels);
+        expect(body[0]).toMatchObject(capabilities);
       }
     });
 

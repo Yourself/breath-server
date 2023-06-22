@@ -204,6 +204,8 @@ export class AirQualityDB {
 
   private readonly insert: Database.Transaction<(_: { channelCount: number } & SensorReading) => void>;
 
+  private readonly queryRecent: Database.Statement<{ id: string }>;
+
   private readonly devices: Database.Statement<[]>;
 
   private readonly delete: Database.Transaction<(id: string) => void>;
@@ -222,6 +224,10 @@ export class AirQualityDB {
       insertSensor.run(reading);
       this.insertAQ.run(reading);
     });
+
+    this.queryRecent = this._db.prepare(
+      `SELECT * FROM air_quality_log WHERE id = $id OR id LIKE ($id || '%') ORDER BY rowid DESC LIMIT 1`
+    );
 
     this.devices = this._db.prepare('SELECT * FROM sensors');
 
@@ -299,6 +305,26 @@ export class AirQualityDB {
     if (updates.length === 0) return;
     const setClause = updates.join(', ');
     this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
+  }
+
+  autoUpdateDevice(id: string) {
+    const row = this.queryRecent.get({ id }) as AQLogRow;
+    if (row == null) {
+      return;
+    }
+
+    const updateParams: SensorMetadataUpdate = {};
+
+    const idComponents = row.id.split('/');
+    if (idComponents.length > 1) {
+      updateParams.channels = parseInt(idComponents[1], 10) + 1;
+    }
+
+    for (const key of VALUE_KEYS) {
+      updateParams[`has_${key}`] = row[key] != null;
+    }
+
+    this.updateDeviceMetadata(id, updateParams);
   }
 
   removeDevice(id: string) {
