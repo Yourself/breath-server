@@ -1,20 +1,30 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
+import assertNever from './assert';
 
 const SCHEMA_PATH = path.join(__dirname, '..', 'schema.sql');
+const MIGRATIONS_PATH = path.join(__dirname, '..', 'migrations');
+const VERSION = 1;
 
 export interface SensorValue {
   rco2?: number;
+  pm01?: number;
   pm02?: number;
+  pm10?: number;
+  pCnt?: number;
   tvoc?: number;
   nox?: number;
   atmp?: number;
   rhum?: number;
 }
 
-const VALUE_KEYS = ['rco2', 'pm02', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
-const CAPABILITY_KEYS = VALUE_KEYS.map((k) => `has_${k}` as const);
+export interface SensorInsertParams extends SensorValue {
+  channels?: SensorValue[];
+}
+
+export const VALUE_KEYS = ['rco2', 'pm01', 'pm02', 'pm10', 'pCnt', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
+export const CAPABILITY_KEYS = VALUE_KEYS.map((k) => `has_${k}` as const);
 
 interface SensorReading extends SensorValue {
   id: string;
@@ -27,12 +37,14 @@ type SensorCapabilities = {
 type SensorsRow = {
   id: string;
   name?: string;
+  channels?: number;
   is_hidden: number;
 } & { [K in keyof SensorCapabilities]?: number };
 
 export interface SensorMetadata extends SensorCapabilities {
   id: string;
   name?: string;
+  channels?: number;
   is_hidden: boolean;
 }
 
@@ -44,10 +56,17 @@ type SensorMetadataUpdateRow = {
   [K in keyof Omit<SensorMetadata, 'id' | 'name'>]?: number;
 } & { name?: string };
 
+enum QueryMode {
+  None = 'none',
+  Only = 'only',
+  All = 'all',
+}
+
 export interface QueryParams {
   start?: string;
   end?: string;
   device?: string | string[];
+  mode?: string;
   points?: string;
 }
 
@@ -62,6 +81,7 @@ export interface SensorTimePoint extends SensorValue {
 
 export interface SensorTimeSeries {
   id: string;
+  channel?: number;
   series: SensorTimePoint[];
 }
 
@@ -72,7 +92,22 @@ function parseInteger(s?: string) {
   return undefined;
 }
 
-function median(values: number[]) {
+function parseQueryMode(s?: string) {
+  if (s != null) {
+    if (/^none$/i.test(s)) return QueryMode.None;
+    if (/^only$/i.test(s)) return QueryMode.Only;
+    if (/^all$/i.test(s)) return QueryMode.All;
+
+    throw new Error(`Invalid query mode: '${s}'`);
+  }
+  return QueryMode.None;
+}
+
+export function isDeviceIdValid(id: string) {
+  return !/[\s/]+/.test(id);
+}
+
+export function median(values: number[]) {
   if (values.length === 0) {
     return undefined;
   }
@@ -90,7 +125,7 @@ function median(values: number[]) {
   return 0.5 * (sorted[mid - 1] + sorted[mid]);
 }
 
-function filterSeries(series: SensorTimePoint[], numPoints: number) {
+export function filterSeries(series: SensorTimePoint[], numPoints: number) {
   if (series.length <= numPoints) {
     return series;
   }
@@ -102,7 +137,10 @@ function filterSeries(series: SensorTimePoint[], numPoints: number) {
 
   const accum: SensorValues = {
     rco2: [],
+    pm01: [],
     pm02: [],
+    pm10: [],
+    pCnt: [],
     tvoc: [],
     nox: [],
     atmp: [],
@@ -138,11 +176,11 @@ function filterSeries(series: SensorTimePoint[], numPoints: number) {
 
   for (let i = 0; i < series.length; i += 1) {
     const remaining = numPoints - filtered.length;
-    const { time } = series[i];
-    if (time.getTime() > baseMS + windowMS) {
+    const time = series[i].time.getTime();
+    if (time > baseMS + windowMS && remaining > 1) {
       baseMS += windowMS;
       if (!applyFilter(new Date(baseMS))) {
-        baseMS = time.getTime();
+        baseMS = time;
         windowMS = (endTime.getTime() - baseMS) / remaining;
       }
     }
@@ -162,7 +200,9 @@ function filterSeries(series: SensorTimePoint[], numPoints: number) {
 export class AirQualityDB {
   private readonly _db: Database.Database;
 
-  private readonly insert: Database.Transaction<(_: SensorReading) => void>;
+  private readonly insertAQ: Database.Statement<SensorReading>;
+
+  private readonly insert: Database.Transaction<(_: { channelCount: number } & SensorReading) => void>;
 
   private readonly devices: Database.Statement<[]>;
 
@@ -171,21 +211,25 @@ export class AirQualityDB {
   constructor(db: Database.Database) {
     this._db = db;
 
-    const insertSensor = this._db.prepare<{ id: string }>(`
-      INSERT INTO sensors (id)
-           SELECT $id WHERE NOT EXISTS (SELECT * FROM sensors WHERE id = $id)`);
-    const insertAQ = this._db.prepare<SensorReading>(`
-           INSERT INTO air_quality_log (id, rco2, pm02, tvoc, nox, atmp, rhum)
-                VALUES ($id, $rco2, $pm02, $tvoc, $nox, $atmp, $rhum)`);
+    const insertSensor = this._db.prepare<{ id: string; channelCount: number }>(`
+      INSERT INTO sensors (id, channels)
+           SELECT $id, $channelCount WHERE NOT EXISTS (SELECT * FROM sensors WHERE id = $id)`);
+    this.insertAQ = this._db.prepare<SensorReading>(`
+      INSERT INTO air_quality_log (id, ${VALUE_KEYS.join(', ')})
+          VALUES ($id, ${VALUE_KEYS.map((k) => `$${k}`).join(', ')})`);
 
     this.insert = this._db.transaction((reading) => {
       insertSensor.run(reading);
-      insertAQ.run(reading);
+      this.insertAQ.run(reading);
     });
 
     this.devices = this._db.prepare('SELECT * FROM sensors');
 
-    const deleteReadings = this._db.prepare<string>(`DELETE FROM air_quality_log WHERE id = ?`);
+    db.function('regexp', { deterministic: true }, (regex, text) =>
+      new RegExp(regex as string).test(text as string) ? 1 : 0
+    );
+
+    const deleteReadings = this._db.prepare<string>(`DELETE FROM air_quality_log WHERE id REGEXP (? || '(/\\d+)?')`);
     const deleteSensor = this._db.prepare<string>(`DELETE FROM sensors WHERE id = ?`);
 
     this.delete = this._db.transaction((id) => {
@@ -194,22 +238,32 @@ export class AirQualityDB {
     });
   }
 
-  insertAirQuality(id: string, quality: SensorValue) {
-    const data = { id, ...quality };
-    for (const key of VALUE_KEYS) {
-      if (!(key in data)) {
-        data[key] = undefined;
+  insertAirQuality(id: string, quality: SensorInsertParams) {
+    const padKeys = (value: SensorValue) => {
+      const data: SensorValue = {};
+      for (const key of VALUE_KEYS) {
+        data[key] = value[key];
       }
-    }
-    this.insert(data);
+      return data;
+    };
+
+    this._db.transaction(() => {
+      this.insert({ id, channelCount: quality.channels?.length ?? 1, ...padKeys(quality) });
+
+      if (quality.channels != null && quality.channels.length > 1) {
+        for (let i = 0; i < quality.channels.length; i += 1) {
+          this.insertAQ.run({ id: `${id}/${i}`, ...padKeys(quality.channels[i]) });
+        }
+      }
+    })();
   }
 
   getDevices() {
     const rows = this.devices.all() as SensorsRow[];
     const result: SensorMetadata[] = [];
     for (const row of rows) {
-      const { id, name, is_hidden } = row;
-      const metadata: SensorMetadata = { id, name, is_hidden: is_hidden !== 0 };
+      const { id, name, channels, is_hidden } = row;
+      const metadata: SensorMetadata = { id, name, channels, is_hidden: is_hidden !== 0 };
       for (const key of CAPABILITY_KEYS) {
         const value = row[key];
         if (value != null) {
@@ -238,6 +292,10 @@ export class AirQualityDB {
       updates.push(`name = $name`);
       updateValues.name = metadata.name;
     }
+    if ('channels' in metadata) {
+      updates.push(`channels = $channels`);
+      updateValues.channels = metadata.channels;
+    }
     if (updates.length === 0) return;
     const setClause = updates.join(', ');
     this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
@@ -251,17 +309,21 @@ export class AirQualityDB {
     const conditions = [];
     const values = [];
 
-    if (query.start == null && query.end == null) {
+    const normalizeDate = (dateStr: string) => new Date(dateStr).getTime() / 1000;
+
+    const { start, end } = query;
+    if (start == null && end == null) {
       conditions.push("time BETWEEN DATETIME('now', '-1 day') AND DATETIME('now')");
-    } else if (query.start == null) {
-      conditions.push("time BETWEEN DATETIME(?, '-1 day') AND ?");
-      values.push(query.end, query.end);
-    } else if (query.end == null) {
-      conditions.push("time BETWEEN ? AND DATETIME('now')");
-      values.push(query.start);
+    } else if (start == null) {
+      conditions.push("time BETWEEN DATETIME(?, 'unixepoch') AND DATETIME(?, 'unixepoch')");
+      const endNorm = normalizeDate(end!);
+      values.push(endNorm - 24 * 60 * 60, endNorm);
+    } else if (end == null) {
+      conditions.push("time BETWEEN DATETIME(?, 'unixepoch') AND DATETIME('now')");
+      values.push(normalizeDate(start));
     } else {
-      conditions.push('time BETWEEN ? AND ?');
-      values.push(query.start, query.end);
+      conditions.push(`time BETWEEN DATETIME(?, 'unixepoch') AND DATETIME(?, 'unixepoch')`);
+      values.push(normalizeDate(start), normalizeDate(end));
     }
 
     if (Array.isArray(query.device)) {
@@ -271,7 +333,24 @@ export class AirQualityDB {
       conditions.push('id = ?');
       values.push(query.device);
     } else {
-      conditions.push('id IN (SELECT id FROM sensors WHERE is_hidden = 0)');
+      const mode = parseQueryMode(query.mode);
+      switch (mode) {
+        case QueryMode.None:
+          conditions.push('id IN (SELECT id FROM sensors WHERE is_hidden = 0)');
+          break;
+        case QueryMode.Only:
+          conditions.push(`instr(id, '/') != 0`);
+          conditions.push(`substr(id, 1, instr(id, '/') - 1) IN (SELECT id FROM sensors WHERE is_hidden = 0)`);
+          break;
+        case QueryMode.All:
+          conditions.push(
+            `IIF(instr(id, '/') == 0, id, substr(id, 1, instr(id, '/') - 1)) IN (SELECT id FROM sensors WHERE is_hidden = 0)`
+          );
+          break;
+        default:
+          /* istanbul ignore next */
+          assertNever(mode);
+      }
     }
 
     const allConditions = conditions.map((c) => `(${c})`).join(' AND ');
@@ -290,7 +369,7 @@ export class AirQualityDB {
     }
 
     for (const row of rows) {
-      const time = new Date(row.time);
+      const time = new Date(`${row.time} GMT+0000`);
       const { rco2, pm02, tvoc, nox, atmp, rhum } = row;
       const point = { time, rco2, pm02, tvoc, nox, atmp, rhum };
       let series = seriesById.get(row.id);
@@ -305,25 +384,36 @@ export class AirQualityDB {
 
     const result = [];
     for (const [id, series] of seriesById.entries()) {
-      result.push({ id, series: filterSeries(series, points) });
+      const channelInfo = /^([^/]+)\/(\d+)$/.exec(id);
+      if (channelInfo != null) {
+        result.push({
+          id: channelInfo[1],
+          channel: parseInt(channelInfo[2], 10),
+          series: filterSeries(series, points),
+        });
+      } else {
+        result.push({ id, series: filterSeries(series, points) });
+      }
     }
     return result;
   }
 }
 
 export function hasAQData(obj: NonNullable<unknown>): obj is SensorValue {
-  if ('rco2' in obj) return true;
-  if ('pm02' in obj) return true;
-  if ('tvoc' in obj) return true;
-  if ('nox' in obj) return true;
-  if ('atmp' in obj) return true;
-  if ('rhum' in obj) return true;
+  for (const key of VALUE_KEYS) {
+    if (key in obj) return true;
+  }
 
   return false;
 }
 
-export function createDB(dbPath: string) {
-  const db = new Database(dbPath);
+export function createDB(dbPath: string, options?: Database.Options) {
+  const db = new Database(dbPath, options);
   db.exec(fs.readFileSync(SCHEMA_PATH).toString());
+  let version = db.pragma('user_version', { simple: true }) as number;
+  while (version < VERSION) {
+    version += 1;
+    db.exec(fs.readFileSync(path.join(MIGRATIONS_PATH, `v${version}.sql`)).toString());
+  }
   return new AirQualityDB(db);
 }
