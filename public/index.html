@@ -31,57 +31,81 @@
           <td style="text-align: center">id</td>
           <td style="text-align: center">string</td>
           <td style="text-align: center">Yes</td>
-          <td>The device ID of the sensor</td>
+          <td>The device ID of the sensor.</td>
         </tr>
         <tr>
           <td style="text-align: center">name</td>
           <td style="text-align: center">string</td>
           <td style="text-align: center">No</td>
-          <td>A human readable name</td>
+          <td>A human readable name.</td>
         </tr>
+        <tr>
+            <td style="text-align: center">channels</td>
+            <td style="text-align: center">number</td>
+            <td style="text-align: center">No</td>
+            <td>The number of channels this device has.</td>
+          </tr>
         <tr>
           <td style="text-align: center">is_hidden</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">Yes</td>
           <td>
-            <p>Whether this device is hidden by default in queries</p>
+            <p>Whether this device is hidden by default in queries.</p>
           </td>
         </tr>
         <tr>
           <td style="text-align: center">has_rco2</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a CO2 sensor</td>
+          <td>Whether this device has CO2 data.</td>
         </tr>
         <tr>
           <td style="text-align: center">has_pm02</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a PM2.5 sensor</td>
+          <td>Whether this device has PM1 data.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_pm02</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has PM2.5 data.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_pm02</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has PM10 data.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">has_pm02</td>
+          <td style="text-align: center">boolean</td>
+          <td style="text-align: center">No</td>
+          <td>Whether this device has 0.3 &micro;m particle count data.</td>
         </tr>
         <tr>
           <td style="text-align: center">has_tvoc</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a TVOC sensor</td>
+          <td>Whether this device has TVOC data.</td>
         </tr>
         <tr>
           <td style="text-align: center">has_nox</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a NOX sensor</td>
+          <td>Whether this device has NOX data.</td>
         </tr>
         <tr>
           <td style="text-align: center">has_atmp</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a temperature sensor</td>
+          <td>Whether this device has temperature data.</td>
         </tr>
         <tr>
           <td style="text-align: center">has_rhum</td>
           <td style="text-align: center">boolean</td>
           <td style="text-align: center">No</td>
-          <td>Whether this device has a relative humidity sensor</td>
+          <td>Whether this device has relative humidity data.</td>
         </tr>
       </tbody>
     </table>
@@ -106,25 +130,47 @@
           <td style="text-align: center">start</td>
           <td style="text-align: center">timestamp</td>
           <td style="text-align: center">Now minus 1 day</td>
-          <td>The start of the time span being queried</td>
+          <td>The start of the time span being queried.</td>
         </tr>
         <tr>
           <td style="text-align: center">end</td>
           <td style="text-align: center">timestamp</td>
           <td style="text-align: center">Now</td>
-          <td>The end of the time span being queried</td>
+          <td>The end of the time span being queried.</td>
         </tr>
         <tr>
           <td style="text-align: center">device</td>
           <td style="text-align: center">string</td>
           <td style="text-align: center">All devices</td>
-          <td>The devices to query, this parameter can appear more than once</td>
+          <td>
+            The devices to query, this parameter can appear more than once. To query a specific channel of a device,
+            query for 'deviceId/channelIndex' (the forward slash must be escaped as %2F).
+          </td>
         </tr>
         <tr>
           <td style="text-align: center">points</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">1440</td>
-          <td>The maximum number of data points to return for each device</td>
+          <td>The maximum number of data points to return for each device and/or channel.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">mode</td>
+          <td style="text-align: center">none | only | all</td>
+          <td style="text-align: center">none</td>
+          <td>
+            The mode for requesting individual channel data. This is ignored if the device field is present.
+            <ul>
+              <li>
+                none: Individual channels are hidden. Devices with multiple channels will show only their aggregate
+                data.
+              </li>
+              <li>
+                only: Individual channels are returned. Devices with single channels and multi-channel device aggregate
+                data is hidden.
+              </li>
+              <li>all: All data is returned including multi-channel device aggregate data.</li>
+            </ul>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -150,13 +196,13 @@
           <td style="text-align: center">id</td>
           <td style="text-align: center">string</td>
           <td style="text-align: center">Yes</td>
-          <td>The device id for the time series</td>
+          <td>The device id for the time series.</td>
         </tr>
         <tr>
           <td style="text-align: center">series</td>
           <td style="text-align: center">TimePoint[]</td>
           <td style="text-align: center">Yes</td>
-          <td>An array of time points containing sensor readings</td>
+          <td>An array of time points containing sensor readings.</td>
         </tr>
       </tbody>
     </table>
@@ -180,43 +226,61 @@
           <td style="text-align: center">time</td>
           <td style="text-align: center">timestamp</td>
           <td style="text-align: center">Yes</td>
-          <td>The time stamp for this point</td>
+          <td>The time stamp for this point.</td>
         </tr>
         <tr>
           <td style="text-align: center">rco2</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured CO2 concentration in ppm</td>
+          <td>The measured CO2 concentration in ppm.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">pm01</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured PM1 concentration in &micro;g/m&sup3;.</td>
         </tr>
         <tr>
           <td style="text-align: center">pm02</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured PM2.5 concentration in &micro;g/m&sup3;</td>
+          <td>The measured PM2.5 concentration in &micro;g/m&sup3;.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">pm10</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The measured PM10 concentration in &micro;g/m&sup3;.</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">pCnt</td>
+          <td style="text-align: center">number</td>
+          <td style="text-align: center">No</td>
+          <td>The number of particles with a diameter greater than 0.3 &micro;m detected in a volume of 0.1 L.</td>
         </tr>
         <tr>
           <td style="text-align: center">tvoc</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured TVOC index</td>
+          <td>The measured TVOC index.</td>
         </tr>
         <tr>
           <td style="text-align: center">nox</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured NOX index</td>
+          <td>The measured NOX index.</td>
         </tr>
         <tr>
           <td style="text-align: center">atmp</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured temperature in &deg;C</td>
+          <td>The measured temperature in &deg;C.</td>
         </tr>
         <tr>
           <td style="text-align: center">rhum</td>
           <td style="text-align: center">number</td>
           <td style="text-align: center">No</td>
-          <td>The measured relative humidity in %</td>
+          <td>The measured relative humidity in %.</td>
         </tr>
       </tbody>
     </table>
