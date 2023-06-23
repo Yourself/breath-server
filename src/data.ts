@@ -396,12 +396,16 @@ export class AirQualityDB {
 
     for (const row of rows) {
       const time = new Date(`${row.time} GMT+0000`);
-      const { rco2, pm02, tvoc, nox, atmp, rhum } = row;
-      const point = { time, rco2, pm02, tvoc, nox, atmp, rhum };
       let series = seriesById.get(row.id);
       if (series == null) {
         series = [];
         seriesById.set(row.id, series);
+      }
+      const point: SensorTimePoint = { time };
+      for (const key of VALUE_KEYS) {
+        if (row[key] != null) {
+          point[key] = row[key];
+        }
       }
       series.push(point);
     }
