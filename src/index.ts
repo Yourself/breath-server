@@ -24,8 +24,6 @@ function createBreathServer() {
     return val.toLowerCase() === 'true';
   }
 
-  app.use(express.static(path.join(__dirname, '..', 'dist')));
-  // app.use('/api', express.static(path.join(__dirname, '..', 'public')));
   app.use(express.json());
 
   app.get('/api', (_, res) => {
