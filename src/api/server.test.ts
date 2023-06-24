@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import request from 'supertest';
-import { SensorMetadata, SensorMetadataUpdate, SensorTimeSeries, SensorValue, VALUE_KEYS } from './data';
-import createBreathServer from './index';
+import { SensorMetadata, SensorMetadataUpdate, SensorTimeSeries, SensorValue, VALUE_KEYS } from '../data';
+import { BreathServer } from './server';
 
 function toQuery<T extends NonNullable<unknown>>(obj: T) {
   const params = [];
@@ -93,7 +93,8 @@ function createSensorChannels(capabilities: SensorMetadataUpdate, numChannels: n
 }
 
 describe('public routes', () => {
-  const app = createBreathServer();
+  const server = new BreathServer();
+  const { app } = server;
   test('/api', async () => {
     const res = await request(app).get('/api');
     expect(res.type).toEqual('text/html');
@@ -117,7 +118,9 @@ describe('public routes', () => {
 
 describe('mutable routes', () => {
   describe('invalid id', () => {
-    const app = createBreathServer();
+    const server = new BreathServer();
+    const { app } = server;
+
     test('submit', async () => {
       const id = 'invalid id';
       const res = await request(app).post(`/api/restricted/submit/${id}`);
@@ -144,7 +147,9 @@ describe('mutable routes', () => {
   });
 
   test('missing data AQ data', async () => {
-    const app = createBreathServer();
+    const server = new BreathServer();
+    const { app } = server;
+
     const id = createId();
     const res = await request(app).post(`/api/restricted/submit/${id}`);
     expect(res.error).toBeTruthy();
@@ -154,7 +159,9 @@ describe('mutable routes', () => {
 
   describe('single channel', () => {
     test('insert and delete device', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const id = createId();
       const name = faker.word.words();
       const payload = { rco2: 1, pm02: 2, tvoc: 3, nox: 4, atmp: 5, rhum: 6 };
@@ -241,7 +248,9 @@ describe('mutable routes', () => {
       }
 
       test('it can insert', async () => {
-        const app = createBreathServer();
+        const server = new BreathServer();
+        const { app } = server;
+
         const allRes = await submitFakeData(app);
         expect(allRes).toHaveLength(numPts);
         for (const res of allRes) {
@@ -267,7 +276,9 @@ describe('mutable routes', () => {
       });
 
       test('it can update device', async () => {
-        const app = createBreathServer();
+        const server = new BreathServer();
+        const { app } = server;
+
         const allRes = await submitFakeData(app);
         expect(allRes).toHaveLength(numPts);
         for (const res of allRes) {
@@ -288,7 +299,9 @@ describe('mutable routes', () => {
       });
 
       test('it can auto update device', async () => {
-        const app = createBreathServer();
+        const server = new BreathServer();
+        const { app } = server;
+
         const allRes = await submitFakeData(app);
         expect(allRes).toHaveLength(numPts);
         for (const res of allRes) {
@@ -310,7 +323,9 @@ describe('mutable routes', () => {
 
       describe('query parameters', () => {
         test('it can query with start', async () => {
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -330,7 +345,9 @@ describe('mutable routes', () => {
         });
 
         test('it can query with end', async () => {
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -343,7 +360,9 @@ describe('mutable routes', () => {
         });
 
         test('it can query with start and end', async () => {
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -363,7 +382,9 @@ describe('mutable routes', () => {
         });
 
         test('it can query with device', async () => {
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -384,7 +405,9 @@ describe('mutable routes', () => {
 
         test('it can query with multiple devices', async () => {
           const otherId = createId();
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -405,7 +428,9 @@ describe('mutable routes', () => {
         });
 
         test('it can query with points', async () => {
-          const app = createBreathServer();
+          const server = new BreathServer();
+          const { app } = server;
+
           const allRes = await submitFakeData(app);
           expect(allRes).toHaveLength(numPts);
           for (const res of allRes) {
@@ -422,7 +447,9 @@ describe('mutable routes', () => {
       });
 
       test('it can be deleted', async () => {
-        const app = createBreathServer();
+        const server = new BreathServer();
+        const { app } = server;
+
         const allRes = await submitFakeData(app);
         expect(allRes).toHaveLength(numPts);
         for (const res of allRes) {
@@ -478,7 +505,9 @@ describe('mutable routes', () => {
     }
 
     test('it can insert', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -504,7 +533,9 @@ describe('mutable routes', () => {
     });
 
     test('it can delete', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -522,7 +553,9 @@ describe('mutable routes', () => {
     });
 
     test('it can update channels metadata', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -543,7 +576,9 @@ describe('mutable routes', () => {
     });
 
     test('it can auto update metadata', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -564,7 +599,9 @@ describe('mutable routes', () => {
     });
 
     test('it can query without channels', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -590,7 +627,9 @@ describe('mutable routes', () => {
     });
 
     test('it can query only channels', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -619,7 +658,9 @@ describe('mutable routes', () => {
     });
 
     test('it can query mode all', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {
@@ -647,7 +688,9 @@ describe('mutable routes', () => {
     });
 
     test('invalid query mode', async () => {
-      const app = createBreathServer();
+      const server = new BreathServer();
+      const { app } = server;
+
       const allRes = await submitFakeData(app);
       expect(allRes).toHaveLength(numPts);
       for (const res of allRes) {

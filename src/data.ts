@@ -1,13 +1,14 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import assertNever from './assert';
+import { assertNever } from './utils/assert';
+import { parseInteger } from './utils/parse';
 
 const SCHEMA_PATH = path.join(__dirname, '..', 'schema.sql');
 const MIGRATIONS_PATH = path.join(__dirname, '..', 'migrations');
 const VERSION = 1;
 
-export interface SensorValue {
+export type SensorValue = {
   rco2?: number;
   pm01?: number;
   pm02?: number;
@@ -17,18 +18,18 @@ export interface SensorValue {
   nox?: number;
   atmp?: number;
   rhum?: number;
-}
+};
 
-export interface SensorInsertParams extends SensorValue {
+export type SensorInsertParams = SensorValue & {
   channels?: SensorValue[];
-}
+};
 
 export const VALUE_KEYS = ['rco2', 'pm01', 'pm02', 'pm10', 'pCnt', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
 export const CAPABILITY_KEYS = VALUE_KEYS.map((k) => `has_${k}` as const);
 
-interface SensorReading extends SensorValue {
+type SensorReading = SensorValue & {
   id: string;
-}
+};
 
 type SensorCapabilities = {
   [K in keyof SensorValue as K extends string ? `has_${K}` : never]?: boolean;
@@ -41,12 +42,12 @@ type SensorsRow = {
   is_hidden: number;
 } & { [K in keyof SensorCapabilities]?: number };
 
-export interface SensorMetadata extends SensorCapabilities {
+export type SensorMetadata = SensorCapabilities & {
   id: string;
   name?: string;
   channels?: number;
   is_hidden: boolean;
-}
+};
 
 export type SensorMetadataUpdate = {
   [K in keyof Omit<SensorMetadata, 'id'>]?: SensorMetadata[K];
@@ -62,35 +63,28 @@ enum QueryMode {
   All = 'all',
 }
 
-export interface QueryParams {
+export type QueryParams = {
   start?: string;
   end?: string;
   device?: string | string[];
   mode?: string;
   points?: string;
-}
+};
 
-interface AQLogRow extends SensorValue {
+type AQLogRow = SensorValue & {
   time: string;
   id: string;
-}
+};
 
-export interface SensorTimePoint extends SensorValue {
+export type SensorTimePoint = SensorValue & {
   time: Date;
-}
+};
 
-export interface SensorTimeSeries {
+export type SensorTimeSeries = {
   id: string;
   channel?: number;
   series: SensorTimePoint[];
-}
-
-function parseInteger(s?: string) {
-  if (s != null && /^\s*\d+\s*$/.test(s)) {
-    return parseInt(s, 10);
-  }
-  return undefined;
-}
+};
 
 function parseQueryMode(s?: string) {
   if (s != null) {
