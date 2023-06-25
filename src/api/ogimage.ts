@@ -40,8 +40,8 @@ export class OGImageGenerator {
     this.server = server;
     this._cacheFile = config?.cacheFile ?? IMAGE_PATH;
     this._expireSec = config?.expirationSeconds ?? EXPIRE_S;
-    this._width = config?.width ?? 480;
-    this._height = config?.height ?? 270;
+    this._width = config?.width ?? 1200;
+    this._height = config?.height ?? 630;
   }
 
   bind() {
@@ -50,7 +50,7 @@ export class OGImageGenerator {
 
   ogImageHandler(_: Request, res: Response) {
     if (!useCachedFile(IMAGE_PATH, this._expireSec)) {
-      const points = Math.trunc(this._width / 2).toString();
+      const points = Math.trunc(this._width / 4).toString();
       const devices = this.server.db.getDevices();
       const query = this.server.db.getReadings({ points }) as QueryResponse<Date>;
       const data = getChartData('atmp', devices, query);
