@@ -2,5 +2,5 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  coveragePathIgnorePatterns: ['./src/assert.ts'],
+  coveragePathIgnorePatterns: ['./src/utils/assert.ts'],
 };

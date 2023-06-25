@@ -4,3 +4,4 @@ coverage
 dist
 data
 .vscode
+.next

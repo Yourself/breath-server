@@ -23,6 +23,10 @@
     "no-underscore-dangle": "off",
     "no-restricted-syntax": "off",
     "guard-for-in": "off",
+    "import/prefer-default-export": "off",
+    "no-console": "off",
+    "consistent-return": "off",
+    "no-continue": "off",
     "@typescript-eslint/semi": [
       "error",
       "always"
