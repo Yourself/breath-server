@@ -10,7 +10,7 @@ RUN npm i
 
 COPY . .
 
-ENV NODE_PATH=./dist
+ENV NODE_PATH=./src
 
 RUN npm run build
 
