@@ -3,4 +3,6 @@ coverage
 dist
 data
 .vscode
+
 .next
+next-env.d.ts
