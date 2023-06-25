@@ -5,7 +5,6 @@
   "scripts": {
     "test": "npx jest",
     "test:coverage": "npx jest --coverage",
-    "build-old": "npx tsc --project ./tsconfig.build.json",
     "lint": "npx eslint src",
     "lint:fix": "npm run lint -- --fix",
     "prettier": "npx prettier --check src",

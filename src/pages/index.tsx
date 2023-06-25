@@ -14,7 +14,7 @@ import 'chartjs-adapter-date-fns';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
-import { DeviceMetadata, QueryResponse, SensorValues, getCapability } from '../api/types';
+import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS, getCapability } from '../api/types';
 import { assertNever } from '../utils/assert';
 
 Chart.register(LinearScale, LineElement, PointElement, Tooltip, Legend, TimeScale);
@@ -98,17 +98,16 @@ function ChartTitle({ sensor }: SensorData) {
   }
 }
 
-function AQChart({ sensor, data }: SensorData & { data: ChartData<'line'> }) {
-  const options: ChartOptions<'line'> = {
+function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
+  return {
     maintainAspectRatio: false,
-    animation: {
-      duration: 0,
-    },
+    animation: false,
+    events: [],
     scales: {
       x: {
         type: 'time',
-        adapters: {
-          date: Date,
+        ticks: {
+          stepSize: 1,
         },
       },
       y: {
@@ -129,10 +128,17 @@ function AQChart({ sensor, data }: SensorData & { data: ChartData<'line'> }) {
       },
     },
   };
+}
+
+function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
   return (
     <div className="aq-chart">
       <ChartTitle sensor={sensor} />
-      <Line options={options} data={data} />
+      {data == null ? (
+        <div className="no-data">No Data</div>
+      ) : (
+        <Line options={getCommonChartOptions(sensor)} data={data} />
+      )}
     </div>
   );
 }
@@ -166,38 +172,43 @@ function getChartData(sensor: Sensor, devices: DeviceMetadata[], queryData: Quer
   return data;
 }
 
+type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> };
+
 export default function Home() {
-  const [devices, setDevices] = useState<DeviceMetadata[]>([]);
-  const [devicesReady, setDevicesReady] = useState(false);
-  const [data, setData] = useState<QueryResponse>([]);
-  const [dataReady, setDataReady] = useState(false);
+  const [data, setData] = useState<AllChartsData>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get<DeviceMetadata[]>('/api/devices').then((res) => {
-      setDevices(res.data);
-      setDevicesReady(true);
-    });
-    axios.get<QueryResponse>('/api/query').then((res) => {
-      setData(res.data);
-      setDataReady(true);
-    });
-  });
+    Promise.all([axios.get<DeviceMetadata[]>('/api/devices'), axios.get<QueryResponse>('/api/query')]).then(
+      ([devRes, queryRes]) => {
+        const allData: AllChartsData = {};
+        const devices = devRes.data;
+        const query = queryRes.data;
 
-  if (!dataReady || !devicesReady) return <p>Loading...</p>;
-  if (data.length === 0 || devices.length === 0) return <p>No data</p>;
+        for (const key of VALUE_KEYS) {
+          allData[key] = getChartData(key, devices, query);
+        }
+
+        setData(allData);
+        setLoading(false);
+      }
+    );
+  }, []);
+
+  if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div>
       <Head>
         <title>Breath Server</title>
       </Head>
-      <AQChart sensor="atmp" data={getChartData('atmp', devices, data)} />
-      <AQChart sensor="rhum" data={getChartData('rhum', devices, data)} />
-      <AQChart sensor="rco2" data={getChartData('rco2', devices, data)} />
+      <AQChart sensor="atmp" data={data.atmp} />
+      <AQChart sensor="rhum" data={data.rhum} />
+      <AQChart sensor="rco2" data={data.rco2} />
       <h2>Particulate Matter</h2>
-      <AQChart sensor="pm01" data={getChartData('pm01', devices, data)} />
-      <AQChart sensor="pm02" data={getChartData('pm02', devices, data)} />
-      <AQChart sensor="pm10" data={getChartData('pm10', devices, data)} />
+      <AQChart sensor="pm01" data={data.pm01} />
+      <AQChart sensor="pm02" data={data.pm02} />
+      <AQChart sensor="pm10" data={data.pm10} />
     </div>
   );
 }
