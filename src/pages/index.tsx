@@ -56,7 +56,7 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
 
 type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> };
 
-export default function Home() {
+function AllCharts() {
   const [data, setData] = useState<AllChartsData>({});
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +81,20 @@ export default function Home() {
 
   return (
     <div>
+      <AQChart sensor="atmp" data={data.atmp} />
+      <AQChart sensor="rhum" data={data.rhum} />
+      <AQChart sensor="rco2" data={data.rco2} />
+      <h2>Particulate Matter</h2>
+      <AQChart sensor="pm01" data={data.pm01} />
+      <AQChart sensor="pm02" data={data.pm02} />
+      <AQChart sensor="pm10" data={data.pm10} />
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <>
       <Head>
         <title>Breath Server</title>
         <meta property="og:title" content="Samsara Bar & Grill" />
@@ -91,13 +105,7 @@ export default function Home() {
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </Head>
-      <AQChart sensor="atmp" data={data.atmp} />
-      <AQChart sensor="rhum" data={data.rhum} />
-      <AQChart sensor="rco2" data={data.rco2} />
-      <h2>Particulate Matter</h2>
-      <AQChart sensor="pm01" data={data.pm01} />
-      <AQChart sensor="pm02" data={data.pm02} />
-      <AQChart sensor="pm10" data={data.pm10} />
-    </div>
+      <AllCharts />
+    </>
   );
 }
