@@ -5,6 +5,7 @@
     "sourceMap": true,
     "outDir": "./dist",
     "esModuleInterop": true,
+    "jsx": "preserve",
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
@@ -15,10 +16,31 @@
       "faker": [
         "./@faker-js/faker"
       ]
-    }
+    },
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "src/**/*.ts",
-    "jest.config.js"
+    "src/**/*.tsx",
+    "jest.config.js",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

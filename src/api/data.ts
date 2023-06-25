@@ -1,38 +1,28 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { assertNever } from './utils/assert';
-import { parseInteger } from './utils/parse';
+import { assertNever } from '../utils/assert';
+import { parseInteger } from '../utils/parse';
+import {
+  CAPABILITY_KEYS,
+  DeviceCapabilities,
+  DeviceMetadata,
+  DeviceMetadataUpdate,
+  DeviceReading,
+  DeviceTimeSeries,
+  QueryParams,
+  ReadingTimePoint,
+  SensorValues,
+  VALUE_KEYS,
+  getCapability,
+} from './types';
 
-const SCHEMA_PATH = path.join(__dirname, '..', 'schema.sql');
-const MIGRATIONS_PATH = path.join(__dirname, '..', 'migrations');
+const SCHEMA_PATH = path.join(__dirname, '..', '..', 'schema.sql');
+const MIGRATIONS_PATH = path.join(__dirname, '..', '..', 'migrations');
 const VERSION = 1;
 
-export type SensorValue = {
-  rco2?: number;
-  pm01?: number;
-  pm02?: number;
-  pm10?: number;
-  pCnt?: number;
-  tvoc?: number;
-  nox?: number;
-  atmp?: number;
-  rhum?: number;
-};
-
-export type SensorInsertParams = SensorValue & {
-  channels?: SensorValue[];
-};
-
-export const VALUE_KEYS = ['rco2', 'pm01', 'pm02', 'pm10', 'pCnt', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
-export const CAPABILITY_KEYS = VALUE_KEYS.map((k) => `has_${k}` as const);
-
-type SensorReading = SensorValue & {
+type SensorReading = SensorValues & {
   id: string;
-};
-
-type SensorCapabilities = {
-  [K in keyof SensorValue as K extends string ? `has_${K}` : never]?: boolean;
 };
 
 type SensorsRow = {
@@ -40,21 +30,10 @@ type SensorsRow = {
   name?: string;
   channels?: number;
   is_hidden: number;
-} & { [K in keyof SensorCapabilities]?: number };
-
-export type SensorMetadata = SensorCapabilities & {
-  id: string;
-  name?: string;
-  channels?: number;
-  is_hidden: boolean;
-};
-
-export type SensorMetadataUpdate = {
-  [K in keyof Omit<SensorMetadata, 'id'>]?: SensorMetadata[K];
-};
+} & { [K in keyof DeviceCapabilities]?: number };
 
 type SensorMetadataUpdateRow = {
-  [K in keyof Omit<SensorMetadata, 'id' | 'name'>]?: number;
+  [K in keyof Omit<DeviceMetadata, 'id' | 'name'>]?: number;
 } & { name?: string };
 
 enum QueryMode {
@@ -63,27 +42,9 @@ enum QueryMode {
   All = 'all',
 }
 
-export type QueryParams = {
-  start?: string;
-  end?: string;
-  device?: string | string[];
-  mode?: string;
-  points?: string;
-};
-
-type AQLogRow = SensorValue & {
+type AQLogRow = SensorValues & {
   time: string;
   id: string;
-};
-
-export type SensorTimePoint = SensorValue & {
-  time: Date;
-};
-
-export type SensorTimeSeries = {
-  id: string;
-  channel?: number;
-  series: SensorTimePoint[];
 };
 
 function parseQueryMode(s?: string) {
@@ -119,7 +80,7 @@ export function median(values: number[]) {
   return 0.5 * (sorted[mid - 1] + sorted[mid]);
 }
 
-export function filterSeries(series: SensorTimePoint[], numPoints: number) {
+export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
   if (series.length <= numPoints) {
     return series;
   }
@@ -127,9 +88,9 @@ export function filterSeries(series: SensorTimePoint[], numPoints: number) {
   const endTime = series[series.length - 1].time;
   const spanMS = endTime.getTime() - baseMS;
   let windowMS = spanMS / numPoints;
-  type SensorValues = { [K in keyof SensorValue]-?: number[] };
+  type Accumulator = { [K in keyof SensorValues]-?: number[] };
 
-  const accum: SensorValues = {
+  const accum: Accumulator = {
     rco2: [],
     pm01: [],
     pm02: [],
@@ -140,8 +101,8 @@ export function filterSeries(series: SensorTimePoint[], numPoints: number) {
     atmp: [],
     rhum: [],
   };
-  const filtered: SensorTimePoint[] = [];
-  const pushValue = (pt: SensorValue) => {
+  const filtered: ReadingTimePoint[] = [];
+  const pushValue = (pt: SensorValues) => {
     for (const key of VALUE_KEYS) {
       const value = pt[key];
       if (value != null) {
@@ -150,7 +111,7 @@ export function filterSeries(series: SensorTimePoint[], numPoints: number) {
     }
   };
   const applyFilter = (time: Date) => {
-    const pt: SensorTimePoint = {
+    const pt: ReadingTimePoint = {
       time,
     };
     let hasKeys = false;
@@ -238,9 +199,9 @@ export class AirQualityDB {
     });
   }
 
-  insertAirQuality(id: string, quality: SensorInsertParams) {
-    const padKeys = (value: SensorValue) => {
-      const data: SensorValue = {};
+  insertAirQuality(id: string, quality: DeviceReading) {
+    const padKeys = (value: SensorValues) => {
+      const data: SensorValues = {};
       for (const key of VALUE_KEYS) {
         data[key] = value[key];
       }
@@ -260,10 +221,10 @@ export class AirQualityDB {
 
   getDevices() {
     const rows = this.devices.all() as SensorsRow[];
-    const result: SensorMetadata[] = [];
+    const result: DeviceMetadata[] = [];
     for (const row of rows) {
       const { id, name, channels, is_hidden } = row;
-      const metadata: SensorMetadata = { id, name, channels, is_hidden: is_hidden !== 0 };
+      const metadata: DeviceMetadata = { id, name, channels, is_hidden: is_hidden !== 0 };
       for (const key of CAPABILITY_KEYS) {
         const value = row[key];
         if (value != null) {
@@ -275,7 +236,7 @@ export class AirQualityDB {
     return result;
   }
 
-  updateDeviceMetadata(id: string, metadata: SensorMetadataUpdate) {
+  updateDeviceMetadata(id: string, metadata: DeviceMetadataUpdate) {
     const updates = [];
     const updateValues: SensorMetadataUpdateRow = {};
     for (const key of CAPABILITY_KEYS) {
@@ -307,7 +268,7 @@ export class AirQualityDB {
       return;
     }
 
-    const updateParams: SensorMetadataUpdate = {};
+    const updateParams: DeviceMetadataUpdate = {};
 
     const idComponents = row.id.split('/');
     if (idComponents.length > 1) {
@@ -315,7 +276,7 @@ export class AirQualityDB {
     }
 
     for (const key of VALUE_KEYS) {
-      updateParams[`has_${key}`] = row[key] != null;
+      updateParams[getCapability(key)] = row[key] != null;
     }
 
     this.updateDeviceMetadata(id, updateParams);
@@ -325,7 +286,7 @@ export class AirQualityDB {
     this.delete(id);
   }
 
-  getReadings(query: QueryParams): SensorTimeSeries[] {
+  getReadings(query: QueryParams): DeviceTimeSeries[] {
     const conditions = [];
     const values = [];
 
@@ -376,7 +337,7 @@ export class AirQualityDB {
     const allConditions = conditions.map((c) => `(${c})`).join(' AND ');
     const sql = `SELECT * FROM air_quality_log WHERE ${allConditions}`;
     const rows = this._db.prepare(sql).all(...values) as AQLogRow[];
-    const seriesById = new Map<string, SensorTimePoint[]>();
+    const seriesById = new Map<string, ReadingTimePoint[]>();
 
     if (query.device != null) {
       if (Array.isArray(query.device)) {
@@ -395,7 +356,7 @@ export class AirQualityDB {
         series = [];
         seriesById.set(row.id, series);
       }
-      const point: SensorTimePoint = { time };
+      const point: ReadingTimePoint = { time };
       for (const key of VALUE_KEYS) {
         if (row[key] != null) {
           point[key] = row[key];
@@ -423,7 +384,7 @@ export class AirQualityDB {
   }
 }
 
-export function hasAQData(obj: NonNullable<unknown>): obj is SensorValue {
+export function hasAQData(obj: NonNullable<unknown>): obj is SensorValues {
   for (const key of VALUE_KEYS) {
     if (key in obj) return true;
   }

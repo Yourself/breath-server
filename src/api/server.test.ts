@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import request from 'supertest';
-import { SensorMetadata, SensorMetadataUpdate, SensorTimeSeries, SensorValue, VALUE_KEYS } from '../data';
 import { BreathServer } from './server';
+import { DeviceMetadata, DeviceMetadataUpdate, DeviceTimeSeries, SensorValues, VALUE_KEYS } from './types';
 
 function toQuery<T extends NonNullable<unknown>>(obj: T) {
   const params = [];
@@ -45,8 +45,8 @@ function createId() {
   return faker.string.hexadecimal({ length: 8, casing: 'lower', prefix: '' });
 }
 
-function createSensorValue(capabilities: SensorMetadataUpdate) {
-  const params: SensorValue = {};
+function createSensorValue(capabilities: DeviceMetadataUpdate) {
+  const params: SensorValues = {};
   if (capabilities.has_rco2 ?? false) params.rco2 = faker.number.float({ min: 400, max: 2000 });
   if (capabilities.has_pm01 ?? false) params.pm01 = faker.number.float({ min: 0, max: 100 });
   if (capabilities.has_pm02 ?? false) params.pm02 = faker.number.float({ min: 0, max: 100 });
@@ -59,8 +59,8 @@ function createSensorValue(capabilities: SensorMetadataUpdate) {
   return params;
 }
 
-function getAverage(...values: SensorValue[]) {
-  const result: SensorValue = {};
+function getAverage(...values: SensorValues[]) {
+  const result: SensorValues = {};
   const sums = VALUE_KEYS.map(
     (key) =>
       [
@@ -83,7 +83,7 @@ function getAverage(...values: SensorValue[]) {
   return result;
 }
 
-function createSensorChannels(capabilities: SensorMetadataUpdate, numChannels: number) {
+function createSensorChannels(capabilities: DeviceMetadataUpdate, numChannels: number) {
   const channels = [];
   for (let i = 0; i < numChannels; i += 1) {
     channels.push(createSensorValue(capabilities));
@@ -182,7 +182,7 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/query');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorTimeSeries>(res, 1, 'id', 'series');
+        const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
         const { series } = body[0];
         expect(series).toHaveLength(1);
@@ -196,7 +196,7 @@ describe('mutable routes', () => {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
         expect(res.type).toEqual('application/json');
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'name', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'name', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].name).toEqual(name);
         expect(body[0].is_hidden).toBeTruthy();
@@ -259,14 +259,14 @@ describe('mutable routes', () => {
         {
           const res = await request(app).get('/api/devices');
           expect(res.ok).toBeTruthy();
-          const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+          const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
           expect(body[0].id).toEqual(id);
           expect(body[0].is_hidden).toBeFalsy();
         }
         {
           const res = await request(app).get('/api/query');
           expect(res.ok).toBeTruthy();
-          const body = expectJsonArray<SensorTimeSeries>(res, 1, 'id', 'series');
+          const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
           expect(body[0].id).toEqual(id);
           expect(body[0].series).toHaveLength(numPts);
           for (let i = 0; i < numPts; i += 1) {
@@ -291,7 +291,7 @@ describe('mutable routes', () => {
         {
           const res = await request(app).get('/api/devices');
           expect(res.ok).toBeTruthy();
-          const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+          const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
           expect(body[0].id).toEqual(id);
           expect(body[0].is_hidden).toBeFalsy();
           expect(body[0]).toMatchObject(capabilities);
@@ -314,7 +314,7 @@ describe('mutable routes', () => {
         {
           const res = await request(app).get('/api/devices');
           expect(res.ok).toBeTruthy();
-          const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+          const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
           expect(body[0].id).toEqual(id);
           expect(body[0].is_hidden).toBeFalsy();
           expect(body[0]).toMatchObject(capabilities);
@@ -335,7 +335,7 @@ describe('mutable routes', () => {
           const query = { start: new Date(Date.now() - 10000) };
           const res = await request(app).get(`/api/query?${toQuery(query)}`);
           expect(res.ok).toBeTruthy();
-          const body = expectJsonArray<SensorTimeSeries>(res, 1, 'id', 'series');
+          const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
           const { id: receivedId, series } = body[0];
           expect(receivedId).toEqual(id);
           expect(series).toHaveLength(numPts);
@@ -496,8 +496,8 @@ describe('mutable routes', () => {
       return responses;
     }
 
-    function extractNonChannels(value: SensorValue) {
-      const result: SensorValue = {};
+    function extractNonChannels(value: SensorValues) {
+      const result: SensorValues = {};
       for (const key of VALUE_KEYS) {
         if (key in value) result[key] = value[key];
       }
@@ -516,14 +516,14 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].is_hidden).toBeFalsy();
       }
       {
         const res = await request(app).get('/api/query');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorTimeSeries>(res, 1, 'id', 'series');
+        const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
         expect(body[0].series).toHaveLength(numPts);
         for (let i = 0; i < numPts; i += 1) {
@@ -569,7 +569,7 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get(`/api/devices`);
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'channels');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'channels');
         expect(body[0].id).toEqual(id);
         expect(body[0].channels).toEqual(numChannels);
       }
@@ -591,7 +591,7 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get(`/api/devices`);
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'channels');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'channels');
         expect(body[0].id).toEqual(id);
         expect(body[0].channels).toEqual(numChannels);
         expect(body[0]).toMatchObject(capabilities);
@@ -610,14 +610,14 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].is_hidden).toBeFalsy();
       }
       {
         const res = await request(app).get('/api/query?channels=none');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorTimeSeries>(res, 1, 'id', 'series');
+        const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
         expect(body[0].series).toHaveLength(numPts);
         for (let i = 0; i < numPts; i += 1) {
@@ -638,14 +638,14 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].is_hidden).toBeFalsy();
       }
       {
         const res = await request(app).get('/api/query?mode=only');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorTimeSeries>(res, 2, 'id', 'channel', 'series');
+        const body = expectJsonArray<DeviceTimeSeries>(res, 2, 'id', 'channel', 'series');
         for (let channel = 0; channel < numChannels; channel += 1) {
           expect(body[channel].id).toEqual(id);
           expect(body[channel].channel).toEqual(channel);
@@ -669,14 +669,14 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].is_hidden).toBeFalsy();
       }
       {
         const res = await request(app).get('/api/query?mode=all');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorTimeSeries>(res, 3, 'id', 'series');
+        const body = expectJsonArray<DeviceTimeSeries>(res, 3, 'id', 'series');
         expect(body[0].id).toEqual(id);
         expect(body[0].series).toHaveLength(numPts);
         for (let channel = 0; channel < numChannels; channel += 1) {
@@ -699,7 +699,7 @@ describe('mutable routes', () => {
       {
         const res = await request(app).get('/api/devices');
         expect(res.ok).toBeTruthy();
-        const body = expectJsonArray<SensorMetadata>(res, 1, 'id', 'is_hidden');
+        const body = expectJsonArray<DeviceMetadata>(res, 1, 'id', 'is_hidden');
         expect(body[0].id).toEqual(id);
         expect(body[0].is_hidden).toBeFalsy();
       }

@@ -1,15 +1,8 @@
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
-import {
-  AirQualityDB,
-  CAPABILITY_KEYS,
-  QueryParams,
-  SensorMetadataUpdate,
-  createDB,
-  hasAQData,
-  isDeviceIdValid,
-} from '../data';
 import { parseBoolean } from '../utils/parse';
+import { AirQualityDB, createDB, hasAQData, isDeviceIdValid } from './data';
+import { CAPABILITY_KEYS, DeviceMetadataUpdate, QueryParams } from './types';
 
 export class BreathServer {
   db: AirQualityDB;
@@ -67,7 +60,7 @@ export class BreathServer {
       res.status(400).send({ error: 'Invalid device ID' });
       return;
     }
-    const update: SensorMetadataUpdate = {};
+    const update: DeviceMetadataUpdate = {};
     for (const key of CAPABILITY_KEYS) {
       const val = req.query[key];
       if (val != null) {

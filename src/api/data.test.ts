@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { SensorTimePoint, filterSeries, median } from './data';
+import { filterSeries, median } from './data';
+import { ReadingTimePoint } from './types';
 
 describe('median', () => {
   test('it handles empty', () => {
@@ -28,7 +29,7 @@ describe('filtering', () => {
   const refDate = new Date();
   describe('uniform distribution', () => {
     const numPoints = 1000;
-    const points: SensorTimePoint[] = [];
+    const points: ReadingTimePoint[] = [];
     faker.seed(0);
     while (points.length < numPoints) {
       points.push({
@@ -46,7 +47,7 @@ describe('filtering', () => {
 
   describe('dense towards present', () => {
     const numPoints = 1000;
-    const points: SensorTimePoint[] = [];
+    const points: ReadingTimePoint[] = [];
     faker.seed(0);
     while (points.length < numPoints - 10) {
       points.push({
@@ -70,7 +71,7 @@ describe('filtering', () => {
 
   describe('dense towards past', () => {
     const numPoints = 1000;
-    const points: SensorTimePoint[] = [];
+    const points: ReadingTimePoint[] = [];
     faker.seed(0);
     while (points.length < numPoints - 10) {
       points.push({
