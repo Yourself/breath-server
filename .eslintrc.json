@@ -27,6 +27,7 @@
     "no-console": "off",
     "consistent-return": "off",
     "no-continue": "off",
+    "no-param-reassign": "off",
     "@typescript-eslint/semi": [
       "error",
       "always"

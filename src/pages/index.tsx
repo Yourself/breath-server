@@ -1,73 +1,16 @@
 import axios from 'axios';
-import {
-  Chart,
-  ChartData,
-  ChartOptions,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  TimeScale,
-  Tooltip,
-} from 'chart.js';
+import { Chart, ChartData, Legend, LineElement, LinearScale, PointElement, TimeScale, Tooltip } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
-import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS, getCapability } from '../api/types';
+import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS } from '../api/types';
 import { assertNever } from '../utils/assert';
+import { Sensor, getChartData, getCommonChartOptions } from '../utils/chart';
 
 Chart.register(LinearScale, LineElement, PointElement, Tooltip, Legend, TimeScale);
 
-type Sensor = keyof SensorValues;
 type SensorData = { sensor: Sensor };
-
-const palette = [
-  '#48beb7',
-  '#ffb200',
-  '#6b93ff',
-  '#93c852',
-  '#ff7f00',
-  '#47acee',
-  '#d3c800',
-  '#9375fc',
-  '#f1c400',
-  '#d63beb',
-  '#01cc7e',
-  '#f05f34',
-  '#7986ff',
-  '#90cc00',
-  '#ef2fad',
-];
-
-function makeRGBA(color: string, alpha: number) {
-  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(color);
-  return match
-    ? `rgba(${parseInt(match[1], 16)}, ${parseInt(match[2], 16)}, ${parseInt(match[3], 16)}, ${alpha})`
-    : undefined;
-}
-
-function getUnits(sensor: Sensor) {
-  switch (sensor) {
-    case 'rco2':
-      return 'ppm';
-    case 'atmp':
-      return '°C';
-    case 'rhum':
-      return '%';
-    case 'tvoc':
-    case 'nox':
-      return '';
-    case 'pm01':
-    case 'pm02':
-    case 'pm10':
-      return 'µg/mL';
-    case 'pCnt':
-      return '#/0.1L';
-    default:
-      assertNever(sensor);
-  }
-}
 
 function ChartTitle({ sensor }: SensorData) {
   switch (sensor) {
@@ -98,38 +41,6 @@ function ChartTitle({ sensor }: SensorData) {
   }
 }
 
-function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
-  return {
-    maintainAspectRatio: false,
-    animation: false,
-    events: [],
-    scales: {
-      x: {
-        type: 'time',
-        ticks: {
-          stepSize: 1,
-        },
-      },
-      y: {
-        title: {
-          display: true,
-          text: getUnits(sensor),
-        },
-      },
-    },
-    elements: {
-      point: {
-        pointStyle: false,
-      },
-    },
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-    },
-  };
-}
-
 function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
   return (
     <div className="aq-chart">
@@ -141,35 +52,6 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
       )}
     </div>
   );
-}
-
-type Series = QueryResponse[0]['series'];
-
-function flattenSeries(sensor: Sensor, pts: Series) {
-  return pts.map((pt) => ({ x: new Date(pt.time).getTime(), y: pt[sensor] })).filter(({ y }) => y != null) as {
-    x: number;
-    y: number;
-  }[];
-}
-
-function getChartData(sensor: Sensor, devices: DeviceMetadata[], queryData: QueryResponse) {
-  const data: ChartData<'line'> = {
-    datasets: [],
-  };
-  for (let i = 0; i < devices.length; i += 1) {
-    const device = devices[i];
-    const series = queryData.find((ts) => ts.id === device.id)?.series;
-    if (device[getCapability(sensor)] && series) {
-      data.datasets.push({
-        label: device.name ?? device.id,
-        data: flattenSeries(sensor, series),
-        borderColor: palette[i],
-        backgroundColor: makeRGBA(palette[i], 0.5),
-        parsing: false,
-      });
-    }
-  }
-  return data;
 }
 
 type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> };
@@ -201,6 +83,13 @@ export default function Home() {
     <div>
       <Head>
         <title>Breath Server</title>
+        <meta property="og:title" content="Samsara Bar & Grill" />
+        <meta property="og:description" content="Live air quality metrics" />
+        <meta property="og:image" content="/api/ogimage" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="manifest" href="/site.webmanifest" />
       </Head>
       <AQChart sensor="atmp" data={data.atmp} />
       <AQChart sensor="rhum" data={data.rhum} />
