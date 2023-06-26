@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Chart, ChartData, Legend, LineElement, LinearScale, PointElement, TimeScale, Tooltip } from 'chart.js';
 import 'chartjs-adapter-date-fns';
+import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
@@ -92,14 +93,22 @@ function AllCharts() {
   );
 }
 
-export default function Home() {
+export const getServerSideProps: GetServerSideProps<{ url: string }> = async ({ req }) => {
+  const proto = req.headers['x-forwarded-proto'] ?? 'http';
+  const host = req.headers['x-forwarded-host'] ?? req.headers.host ?? '';
+  return {
+    props: { url: `${proto}://${host}` },
+  };
+};
+
+export default function Home({ url }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <>
       <Head>
         <title>Breath Server</title>
         <meta property="og:title" content="Samsara Bar & Grill" />
         <meta property="og:description" content="Live air quality metrics" />
-        <meta property="og:image" content="/api/ogimage" />
+        <meta property="og:image" content={`${url}/api/ogimage`} />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
