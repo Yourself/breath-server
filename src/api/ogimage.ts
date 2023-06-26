@@ -62,6 +62,7 @@ export class OGImageGenerator {
       const canvas = new ChartJSNodeCanvas({
         width: this._width,
         height: this._height,
+        backgroundColour: 'white',
         chartCallback: (chart) => {
           chart.defaults.responsive = true;
           chart.defaults.maintainAspectRatio = false;
