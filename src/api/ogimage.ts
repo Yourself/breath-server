@@ -3,11 +3,12 @@ import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 import { Request, Response } from 'express';
 import { existsSync, statSync, writeFileSync } from 'fs';
 import path from 'path';
+import { getDir } from '../env';
 import { getChartData, getCommonChartOptions } from '../utils/chart';
 import { BreathServer } from './server';
 import { QueryResponse } from './types';
 
-const IMAGE_PATH = path.join(__dirname, '..', '..', 'data', 'ogimage.png');
+const IMAGE_PATH = path.join(getDir('data'), 'ogimage.png');
 
 const EXPIRE_S = 3600;
 

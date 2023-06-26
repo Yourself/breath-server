@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
+import { getDir } from '../env';
 import { assertNever } from '../utils/assert';
 import { parseInteger } from '../utils/parse';
 import {
@@ -17,8 +18,8 @@ import {
   getCapability,
 } from './types';
 
-const SCHEMA_PATH = path.join(__dirname, '..', '..', 'schema.sql');
-const MIGRATIONS_PATH = path.join(__dirname, '..', '..', 'migrations');
+const SCHEMA_PATH = path.join(getDir(), 'schema.sql');
+const MIGRATIONS_PATH = getDir('migrations');
 const VERSION = 1;
 
 type SensorReading = SensorValues & {
@@ -393,6 +394,7 @@ export function hasAQData(obj: NonNullable<unknown>): obj is SensorValues {
 }
 
 export function createDB(dbPath: string, options?: Database.Options) {
+  console.log(dbPath);
   const db = new Database(dbPath, options);
   db.exec(fs.readFileSync(SCHEMA_PATH).toString());
   let version = db.pragma('user_version', { simple: true }) as number;

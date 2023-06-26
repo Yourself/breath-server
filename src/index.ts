@@ -1,24 +1,17 @@
 import next from 'next';
-import path from 'path';
 import { OGImageGenerator } from './api/ogimage';
 import { BreathServer } from './api/server';
-
-const dev = process.env.NODE_ENV !== 'production';
+import { getDbPath, isDev } from './env';
 
 function getDefaultListenPort() {
   return parseInt(process.env.LISTEN_PORT ?? '3000', 10);
 }
 
-function getDefaultDbPath() {
-  const filename = dev ? 'dev.db' : 'prod.db';
-  return path.join(__dirname, '..', 'data', filename);
-}
-
-const app = next({ dev });
+const app = next({ dev: isDev() });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = new BreathServer(getDefaultDbPath());
+  const server = new BreathServer(getDbPath());
   const ogImage = new OGImageGenerator(server);
   ogImage.bind();
 

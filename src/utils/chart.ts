@@ -101,6 +101,9 @@ export function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
       point: {
         radius: 0,
       },
+      line: {
+        borderWidth: 2,
+      },
     },
     plugins: {
       legend: {

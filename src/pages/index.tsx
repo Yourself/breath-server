@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Chart, ChartData, Legend, LineElement, LinearScale, PointElement, TimeScale, Tooltip } from 'chart.js';
 import 'chartjs-adapter-date-fns';
-import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
@@ -57,26 +57,28 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
 
 type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> };
 
-function AllCharts() {
-  const [data, setData] = useState<AllChartsData>({});
-  const [loading, setLoading] = useState(true);
+function AllCharts({ ssData }: { ssData?: AllChartsData }) {
+  const [data, setData] = useState<AllChartsData>(ssData ?? {});
+  const [loading, setLoading] = useState(ssData == null);
 
-  useEffect(() => {
-    Promise.all([axios.get<DeviceMetadata[]>('/api/devices'), axios.get<QueryResponse>('/api/query')]).then(
-      ([devRes, queryRes]) => {
-        const allData: AllChartsData = {};
-        const devices = devRes.data;
-        const query = queryRes.data;
+  if (ssData == null) {
+    useEffect(() => {
+      Promise.all([axios.get<DeviceMetadata[]>('/api/devices'), axios.get<QueryResponse>('/api/query')]).then(
+        ([devRes, queryRes]) => {
+          const allData: AllChartsData = {};
+          const devices = devRes.data;
+          const query = queryRes.data;
 
-        for (const key of VALUE_KEYS) {
-          allData[key] = getChartData(key, devices, query);
+          for (const key of VALUE_KEYS) {
+            allData[key] = getChartData(key, devices, query);
+          }
+
+          setData(allData);
+          setLoading(false);
         }
-
-        setData(allData);
-        setLoading(false);
-      }
-    );
-  }, []);
+      );
+    }, []);
+  }
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -93,7 +95,9 @@ function AllCharts() {
   );
 }
 
-export const getServerSideProps: GetServerSideProps<{ url: string }> = async ({ req }) => {
+type ServerProps = { url: string } & { data?: AllChartsData };
+
+export const getServerSideProps: GetServerSideProps<ServerProps> = async ({ req }) => {
   const proto = req.headers['x-forwarded-proto'] ?? 'http';
   const host = req.headers['x-forwarded-host'] ?? req.headers.host ?? '';
   return {
@@ -101,7 +105,7 @@ export const getServerSideProps: GetServerSideProps<{ url: string }> = async ({ 
   };
 };
 
-export default function Home({ url }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Home({ url, data }: ServerProps) {
   return (
     <>
       <Head>
@@ -114,7 +118,7 @@ export default function Home({ url }: InferGetServerSidePropsType<typeof getServ
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </Head>
-      <AllCharts />
+      <AllCharts ssData={data} />
     </>
   );
 }
