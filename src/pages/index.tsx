@@ -87,10 +87,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
       <AQChart sensor="atmp" data={data.atmp} />
       <AQChart sensor="rhum" data={data.rhum} />
       <AQChart sensor="rco2" data={data.rco2} />
-      <h2>Particulate Matter</h2>
-      <AQChart sensor="pm01" data={data.pm01} />
       <AQChart sensor="pm02" data={data.pm02} />
-      <AQChart sensor="pm10" data={data.pm10} />
     </div>
   );
 }
