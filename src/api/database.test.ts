@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { filterSeries, median } from './data';
+import { filterSeries, median } from './database';
 import { ReadingTimePoint } from './types';
 
 describe('median', () => {

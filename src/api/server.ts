@@ -1,7 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import { parseBoolean } from '../utils/parse';
-import { AirQualityDB, createDB, hasAQData, isDeviceIdValid } from './data';
+import { AirQualityDB, createDB, hasAQData, isDeviceIdValid } from './database';
 import { CAPABILITY_KEYS, DeviceMetadataUpdate, QueryParams } from './types';
 
 export class BreathServer {
