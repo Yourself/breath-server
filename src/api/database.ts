@@ -153,6 +153,19 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
   return filtered;
 }
 
+function getQuerySensors({ sensor }: QueryParams) {
+  if (sensor == null) return VALUE_KEYS;
+  const args = Array.isArray(sensor) ? sensor.flatMap((s) => s.split(',')) : sensor.split(',');
+  const sensors = new Set<keyof SensorValues>();
+  for (const arg of args) {
+    const key = VALUE_KEYS.find((k) => k === arg);
+    if (key != null) {
+      sensors.add(key);
+    }
+  }
+  return Array.from(sensors);
+}
+
 export class AirQualityDB {
   private readonly _db: Database.Database;
 
@@ -200,26 +213,6 @@ export class AirQualityDB {
     });
   }
 
-  insertAirQuality(id: string, quality: DeviceReading) {
-    const padKeys = (value: SensorValues) => {
-      const data: SensorValues = {};
-      for (const key of VALUE_KEYS) {
-        data[key] = value[key];
-      }
-      return data;
-    };
-
-    this._db.transaction(() => {
-      this.insert({ id, channelCount: quality.channels?.length ?? 1, ...padKeys(quality) });
-
-      if (quality.channels != null && quality.channels.length > 1) {
-        for (let i = 0; i < quality.channels.length; i += 1) {
-          this.insertAQ.run({ id: `${id}/${i}`, ...padKeys(quality.channels[i]) });
-        }
-      }
-    })();
-  }
-
   getDevices() {
     const rows = this.devices.all() as SensorsRow[];
     const result: DeviceMetadata[] = [];
@@ -237,59 +230,14 @@ export class AirQualityDB {
     return result;
   }
 
-  updateDeviceMetadata(id: string, metadata: DeviceMetadataUpdate) {
-    const updates = [];
-    const updateValues: SensorMetadataUpdateRow = {};
-    for (const key of CAPABILITY_KEYS) {
-      if (key in metadata) {
-        updates.push(`${key} = $${key}`);
-        updateValues[key] = metadata[key] ? 1 : 0;
-      }
-    }
-    if ('is_hidden' in metadata) {
-      updates.push(`is_hidden = $is_hidden`);
-      updateValues.is_hidden = metadata.is_hidden ? 1 : 0;
-    }
-    if ('name' in metadata) {
-      updates.push(`name = $name`);
-      updateValues.name = metadata.name;
-    }
-    if ('channels' in metadata) {
-      updates.push(`channels = $channels`);
-      updateValues.channels = metadata.channels;
-    }
-    if (updates.length === 0) return;
-    const setClause = updates.join(', ');
-    this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
-  }
-
-  autoUpdateDevice(id: string) {
-    const row = this.queryRecent.get({ id }) as AQLogRow;
-    if (row == null) {
-      return;
-    }
-
-    const updateParams: DeviceMetadataUpdate = {};
-
-    const idComponents = row.id.split('/');
-    if (idComponents.length > 1) {
-      updateParams.channels = parseInt(idComponents[1], 10) + 1;
-    }
-
-    for (const key of VALUE_KEYS) {
-      updateParams[getCapability(key)] = row[key] != null;
-    }
-
-    this.updateDeviceMetadata(id, updateParams);
-  }
-
-  removeDevice(id: string) {
-    this.delete(id);
-  }
-
   getReadings(query: QueryParams): DeviceTimeSeries[] {
     const conditions = [];
     const values = [];
+
+    const sensors = getQuerySensors(query);
+    if (sensors.length === 0) {
+      throw new Error(`Found no suitable sensors matching query: ${query.sensor}`);
+    }
 
     const normalizeDate = (dateStr: string) => new Date(dateStr).getTime() / 1000;
 
@@ -358,7 +306,7 @@ export class AirQualityDB {
         seriesById.set(row.id, series);
       }
       const point: ReadingTimePoint = { time };
-      for (const key of VALUE_KEYS) {
+      for (const key of sensors) {
         if (row[key] != null) {
           point[key] = row[key];
         }
@@ -382,6 +330,76 @@ export class AirQualityDB {
       }
     }
     return result;
+  }
+
+  insertAirQuality(id: string, quality: DeviceReading) {
+    const padKeys = (value: SensorValues) => {
+      const data: SensorValues = {};
+      for (const key of VALUE_KEYS) {
+        data[key] = value[key];
+      }
+      return data;
+    };
+
+    this._db.transaction(() => {
+      this.insert({ id, channelCount: quality.channels?.length ?? 1, ...padKeys(quality) });
+
+      if (quality.channels != null && quality.channels.length > 1) {
+        for (let i = 0; i < quality.channels.length; i += 1) {
+          this.insertAQ.run({ id: `${id}/${i}`, ...padKeys(quality.channels[i]) });
+        }
+      }
+    })();
+  }
+
+  updateDeviceMetadata(id: string, metadata: DeviceMetadataUpdate) {
+    const updates = [];
+    const updateValues: SensorMetadataUpdateRow = {};
+    for (const key of CAPABILITY_KEYS) {
+      if (key in metadata) {
+        updates.push(`${key} = $${key}`);
+        updateValues[key] = metadata[key] ? 1 : 0;
+      }
+    }
+    if ('is_hidden' in metadata) {
+      updates.push(`is_hidden = $is_hidden`);
+      updateValues.is_hidden = metadata.is_hidden ? 1 : 0;
+    }
+    if ('name' in metadata) {
+      updates.push(`name = $name`);
+      updateValues.name = metadata.name;
+    }
+    if ('channels' in metadata) {
+      updates.push(`channels = $channels`);
+      updateValues.channels = metadata.channels;
+    }
+    if (updates.length === 0) return;
+    const setClause = updates.join(', ');
+    this._db.prepare(`UPDATE sensors SET ${setClause} WHERE id = $id`).run({ id, ...updateValues });
+  }
+
+  autoUpdateDevice(id: string) {
+    const row = this.queryRecent.get({ id }) as AQLogRow;
+    if (row == null) {
+      return;
+    }
+
+    const updateParams: DeviceMetadataUpdate = {};
+
+    const idComponents = row.id.split('/');
+    if (idComponents.length > 1) {
+      updateParams.channels = parseInt(idComponents[1], 10) + 1;
+    }
+
+    for (const key of VALUE_KEYS) {
+      updateParams[getCapability(key)] = row[key] != null;
+    }
+
+    this.updateDeviceMetadata(id, updateParams);
+  }
+
+  removeDevice(id: string) {
+    this.delete(id);
   }
 }
 

@@ -63,20 +63,21 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
 
   if (ssData == null) {
     useEffect(() => {
-      Promise.all([axios.get<DeviceMetadata[]>('/api/devices'), axios.get<QueryResponse>('/api/query')]).then(
-        ([devRes, queryRes]) => {
-          const allData: AllChartsData = {};
-          const devices = devRes.data;
-          const query = queryRes.data;
+      Promise.all([
+        axios.get<DeviceMetadata[]>('/api/devices'),
+        axios.get<QueryResponse>('/api/query', { params: { sensor: 'atmp,rhum,rco2,pm02' } }),
+      ]).then(([devRes, queryRes]) => {
+        const allData: AllChartsData = {};
+        const devices = devRes.data;
+        const query = queryRes.data;
 
-          for (const key of VALUE_KEYS) {
-            allData[key] = getChartData(key, devices, query);
-          }
-
-          setData(allData);
-          setLoading(false);
+        for (const key of VALUE_KEYS) {
+          allData[key] = getChartData(key, devices, query);
         }
-      );
+
+        setData(allData);
+        setLoading(false);
+      });
     }, []);
   }
 
