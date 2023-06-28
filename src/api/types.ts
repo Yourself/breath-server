@@ -38,6 +38,7 @@ export type QueryParams = {
   start?: string;
   end?: string;
   device?: string | string[];
+  sensor?: string | string[];
   mode?: string;
   points?: string;
 };
