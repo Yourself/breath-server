@@ -23,6 +23,8 @@ function ChartTitle({ sensor }: SensorData) {
       );
     case 'atmp':
       return <div className="chart-title">Temperature</div>;
+    case 'dewp':
+      return <div className="chart-title">Dew Point</div>;
     case 'rhum':
       return <div className="chart-title">Relative Humidity</div>;
     case 'tvoc':
@@ -55,7 +57,7 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
   );
 }
 
-type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> };
+type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> } & { dewp?: ChartData<'line'> };
 
 function AllCharts({ ssData }: { ssData?: AllChartsData }) {
   const [data, setData] = useState<AllChartsData>(ssData ?? {});
@@ -65,7 +67,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
     useEffect(() => {
       Promise.all([
         axios.get<DeviceMetadata[]>('/api/devices'),
-        axios.get<QueryResponse>('/api/query', { params: { sensor: 'atmp,rhum,rco2,pm02' } }),
+        axios.get<QueryResponse>('/api/query', { params: { points: 720, sensor: 'atmp,rhum,rco2,pm02' } }),
       ]).then(([devRes, queryRes]) => {
         const allData: AllChartsData = {};
         const devices = devRes.data;
@@ -74,6 +76,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
         for (const key of VALUE_KEYS) {
           allData[key] = getChartData(key, devices, query);
         }
+        allData.dewp = getChartData('dewp', devices, query);
 
         setData(allData);
         setLoading(false);
@@ -86,7 +89,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
   return (
     <div>
       <AQChart sensor="atmp" data={data.atmp} />
-      <AQChart sensor="rhum" data={data.rhum} />
+      <AQChart sensor="dewp" data={data.dewp} />
       <AQChart sensor="rco2" data={data.rco2} />
       <AQChart sensor="pm02" data={data.pm02} />
     </div>
