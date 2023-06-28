@@ -27,8 +27,8 @@ jobs:
         with:
           node-version: 18
 
-      - run: npm ci
-      - run: npm test
+      - run: pnpm ci
+      - run: pnpm test
 
       - name: Login to registry
         uses: docker/login-action@v2
