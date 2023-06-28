@@ -27,8 +27,13 @@ jobs:
         with:
           node-version: 18
 
-      - run: npm ci
-      - run: npm test
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - run: pnpm i
+      - run: pnpm test
 
       - name: Login to registry
         uses: docker/login-action@v2
