@@ -15,7 +15,3 @@ COPY . .
 ENV NODE_PATH=./src
 
 RUN pnpm run build
-
-ENV NODE_ENV=production
-
-RUN pnpm i
