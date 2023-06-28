@@ -32,7 +32,7 @@ jobs:
         with:
           version: 8
 
-      - run: pnpm ci
+      - run: pnpm i
       - run: pnpm test
 
       - name: Login to registry
