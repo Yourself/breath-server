@@ -2,7 +2,7 @@ import { ChartData, ChartOptions } from 'chart.js';
 import { DeviceMetadata, QueryResponse, SensorValues, getCapability } from '../api/types';
 import { assertNever } from './assert';
 
-export type Sensor = keyof SensorValues;
+export type Sensor = keyof SensorValues | 'dewp';
 type Series<T extends string | Date = string> = QueryResponse<T>[0]['series'];
 
 const palette = [
@@ -30,11 +30,46 @@ function makeRGBA(color: string, alpha: number) {
     : undefined;
 }
 
-function flattenSeries<T extends string | Date>(sensor: Sensor, pts: Series<T>) {
-  return pts.map((pt) => ({ x: new Date(pt.time).getTime(), y: pt[sensor] })).filter(({ y }) => y != null) as {
+function getDewPoint(T: number | undefined, rhum: number | undefined) {
+  if (T == null || rhum == null) return undefined;
+  const b = 17.62;
+  const c = 243.12;
+  const d = 234.5;
+  const p = (b - T / d) * (T / (c + T));
+  const gamma = Math.log(rhum / 100) + p;
+  return (c * gamma) / (b - gamma);
+}
+
+function flattenSeries<T extends string | Date>(sensor: Sensor | 'dewp', pts: Series<T>) {
+  const getY = (values: SensorValues) => (sensor === 'dewp' ? getDewPoint(values.atmp, values.rhum) : values[sensor]);
+  return pts.map((pt) => ({ x: new Date(pt.time).getTime(), y: getY(pt) })).filter(({ y }) => y != null) as {
     x: number;
     y: number;
   }[];
+}
+
+export function getDewPointChartData<T extends string | Date = string>(
+  sensor: 'dewp',
+  devices: DeviceMetadata[],
+  queryData: QueryResponse<T>
+) {
+  const data: ChartData<'line'> = {
+    datasets: [],
+  };
+  for (let i = 0; i < devices.length; i += 1) {
+    const device = devices[i];
+    const series = queryData.find((ts) => ts.id === device.id)?.series;
+    if (device.has_atmp && device.has_rhum && series) {
+      data.datasets.push({
+        label: device.name ?? device.id,
+        data: flattenSeries(sensor, series),
+        borderColor: palette[i],
+        backgroundColor: makeRGBA(palette[i], 0.5),
+        parsing: false,
+      });
+    }
+  }
+  return data;
 }
 
 export function getChartData<T extends string | Date = string>(
@@ -48,7 +83,8 @@ export function getChartData<T extends string | Date = string>(
   for (let i = 0; i < devices.length; i += 1) {
     const device = devices[i];
     const series = queryData.find((ts) => ts.id === device.id)?.series;
-    if (device[getCapability(sensor)] && series) {
+    const hasSensor = sensor === 'dewp' ? device.has_atmp && device.has_rhum : device[getCapability(sensor)];
+    if (hasSensor && series) {
       data.datasets.push({
         label: device.name ?? device.id,
         data: flattenSeries(sensor, series),
@@ -66,6 +102,7 @@ function getUnits(sensor: Sensor) {
     case 'rco2':
       return 'ppm';
     case 'atmp':
+    case 'dewp':
       return '°C';
     case 'rhum':
       return '%';
