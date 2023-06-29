@@ -18,8 +18,8 @@ import {
   getCapability,
 } from './types';
 
-const SCHEMA_PATH = path.join(getDir(), 'schema.sql');
 const MIGRATIONS_PATH = getDir('migrations');
+const SCHEMA_PATH = path.join(MIGRATIONS_PATH, 'schema.sql');
 const VERSION = 1;
 
 type SensorReading = SensorValues & {
