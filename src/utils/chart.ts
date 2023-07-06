@@ -112,7 +112,7 @@ function getUnits(sensor: Sensor) {
     case 'pm01':
     case 'pm02':
     case 'pm10':
-      return 'µg/mL';
+      return 'µg/m³';
     case 'pCnt':
       return '#/0.1L';
     default:
