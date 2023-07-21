@@ -199,6 +199,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     fetchChartData(range).then((allData) => {
       setData(allData);
     });
