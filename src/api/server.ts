@@ -1,3 +1,4 @@
+import { utcToZonedTime } from 'date-fns-tz';
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import { parseBoolean } from '../utils/parse';
@@ -24,6 +25,7 @@ export class BreathServer {
     this.app.put('/api/restricted/update/:device', this.update.bind(this));
     this.app.put('/api/restricted/auto-update/:device', this.autoUpdate.bind(this));
     this.app.delete('/api/restricted/delete/:device', this.delete.bind(this));
+    this.app.get('/api/restricted/control/:device', BreathServer.control);
   }
 
   listen(port: number) {
@@ -105,5 +107,30 @@ export class BreathServer {
     }
     this.db.removeDevice(id);
     res.sendStatus(200);
+  }
+
+  private static getBrightness(time: Date) {
+    const hours = (time.getSeconds() / 60 + time.getMinutes()) / 60 + time.getHours();
+    if (hours < 8) {
+      return 0;
+    }
+    if (hours < 9) {
+      return 1 + Math.round(254 * (hours - 8));
+    }
+    if (hours > 23) {
+      return 1 + Math.round(254 * (24 - hours));
+    }
+    return 255;
+  }
+
+  private static control(req: Request<{ device: string }>, res: Response) {
+    // TODO: Add db configuration maybe
+    const id = req.params.device;
+    if (!isDeviceIdValid(id)) {
+      res.status(400).send({ error: 'Invalid device ID' });
+    }
+    const now = utcToZonedTime(Date.now(), 'America/Boise');
+
+    res.send(this.getBrightness(now).toString());
   }
 }
