@@ -37,11 +37,21 @@ function getDewPoint(T: number | undefined, rhum: number | undefined) {
   const d = 234.5;
   const p = (b - T / d) * (T / (c + T));
   const gamma = Math.log(rhum / 100) + p;
-  return (c * gamma) / (b - gamma);
+  return (((c * gamma) / (b - gamma)) * 9) / 5 + 32;
+}
+
+function getYAxisConverter(sensor: Sensor | 'dewp') {
+  if (sensor === 'dewp') {
+    return (values: SensorValues) => getDewPoint(values.atmp, values.rhum);
+  }
+  if (sensor === 'atmp') {
+    return (values: SensorValues) => (values.atmp != null ? (values.atmp * 9) / 5 + 32 : undefined);
+  }
+  return (values: SensorValues) => values[sensor];
 }
 
 function flattenSeries<T extends string | Date>(sensor: Sensor | 'dewp', pts: Series<T>) {
-  const getY = (values: SensorValues) => (sensor === 'dewp' ? getDewPoint(values.atmp, values.rhum) : values[sensor]);
+  const getY = getYAxisConverter(sensor);
   return pts.map((pt) => ({ x: new Date(pt.time).getTime(), y: getY(pt) })).filter(({ y }) => y != null) as {
     x: number;
     y: number;
@@ -103,7 +113,7 @@ function getUnits(sensor: Sensor) {
       return 'ppm';
     case 'atmp':
     case 'dewp':
-      return '°C';
+      return '°F';
     case 'rhum':
       return '%';
     case 'tvoc':
