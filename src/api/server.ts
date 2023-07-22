@@ -131,6 +131,6 @@ export class BreathServer {
     }
     const now = utcToZonedTime(Date.now(), 'America/Boise');
 
-    res.send(this.getBrightness(now).toString());
+    res.send(BreathServer.getBrightness(now).toString());
   }
 }
