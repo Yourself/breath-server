@@ -202,6 +202,7 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
     setLoading(true);
     fetchChartData(range).then((allData) => {
       setData(allData);
+      setLoading(false);
     });
   }, [range]);
 
