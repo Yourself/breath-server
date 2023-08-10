@@ -135,15 +135,16 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
     const time = series[i].time.getTime();
     if (time > baseMS + windowMS && remaining > 1) {
       baseMS += windowMS;
-      if (!applyFilter(new Date(baseMS))) {
-        baseMS = time;
-        windowMS = (endTime.getTime() - baseMS) / remaining;
-      }
+      applyFilter(new Date(baseMS));
     }
     if (remaining > series.length - i) {
       applyFilter(new Date(baseMS + windowMS));
       filtered.push(...series.slice(i));
       return filtered;
+    }
+    if (time > baseMS + windowMS) {
+      baseMS = time;
+      windowMS = (endTime.getTime() - baseMS) / remaining;
     }
     pushValue(series[i]);
   }
