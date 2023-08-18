@@ -111,14 +111,16 @@ export class BreathServer {
 
   private static getBrightness(time: Date) {
     const hours = (time.getSeconds() / 60 + time.getMinutes()) / 60 + time.getHours();
-    if (hours < 8) {
+    const onHour = 8;
+    const offHour = 22;
+    if (hours < onHour) {
       return 0;
     }
-    if (hours < 9) {
-      return 1 + Math.round(254 * (hours - 8));
+    if (hours < onHour + 1) {
+      return 1 + Math.round(254 * (hours - onHour));
     }
-    if (hours > 23) {
-      return 1 + Math.round(254 * (24 - hours));
+    if (hours > offHour - 1) {
+      return 1 + Math.round(254 * (offHour - hours));
     }
     return 255;
   }
