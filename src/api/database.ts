@@ -13,6 +13,7 @@ import {
   DeviceTimeSeries,
   QueryParams,
   ReadingTimePoint,
+  ReadingTimeSeries,
   SensorValues,
   VALUE_KEYS,
   getCapability,
@@ -81,9 +82,23 @@ export function median(values: number[]) {
   return 0.5 * (sorted[mid - 1] + sorted[mid]);
 }
 
-export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
+export function filterSeries(
+  series: ReadingTimePoint[],
+  numPoints: number,
+  sensors: ReturnType<typeof getQuerySensors> = VALUE_KEYS
+) {
+  const filtered: ReadingTimeSeries = { time: [] };
+  for (const key of sensors) {
+    filtered[key] = [];
+  }
   if (series.length <= numPoints) {
-    return series;
+    for (const pt of series) {
+      filtered.time.push(pt.time);
+      for (const key of sensors) {
+        filtered[key]?.push(pt[key]);
+      }
+    }
+    return filtered;
   }
   let baseMS = series[0].time.getTime();
   const endTime = series[series.length - 1].time;
@@ -102,9 +117,8 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
     atmp: [],
     rhum: [],
   };
-  const filtered: ReadingTimePoint[] = [];
   const pushValue = (pt: SensorValues) => {
-    for (const key of VALUE_KEYS) {
+    for (const key of sensors) {
       const value = pt[key];
       if (value != null) {
         accum[key].push(value);
@@ -116,7 +130,7 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
       time,
     };
     let hasKeys = false;
-    for (const key of VALUE_KEYS) {
+    for (const key of sensors) {
       const m = median(accum[key]);
       if (m != null) {
         pt[key] = m;
@@ -125,13 +139,16 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
       accum[key] = [];
     }
     if (hasKeys) {
-      filtered.push(pt);
+      filtered.time.push(pt.time);
+      for (const key of sensors) {
+        filtered[key]?.push(pt[key]);
+      }
     }
     return hasKeys;
   };
 
   for (let i = 0; i < series.length; i += 1) {
-    const remaining = numPoints - filtered.length;
+    const remaining = numPoints - filtered.time.length;
     const time = series[i].time.getTime();
     if (time > baseMS + windowMS && remaining > 1) {
       baseMS += windowMS;
@@ -139,7 +156,12 @@ export function filterSeries(series: ReadingTimePoint[], numPoints: number) {
     }
     if (remaining > series.length - i) {
       applyFilter(new Date(baseMS + windowMS));
-      filtered.push(...series.slice(i));
+      for (const pt of series.slice(i)) {
+        filtered.time.push(pt.time);
+        for (const key of sensors) {
+          filtered[key]?.push(pt[key]);
+        }
+      }
       return filtered;
     }
     if (time > baseMS + windowMS) {
@@ -317,17 +339,17 @@ export class AirQualityDB {
 
     const points = parseInteger(query.points) ?? 1440;
 
-    const result = [];
+    const result: DeviceTimeSeries[] = [];
     for (const [id, series] of seriesById.entries()) {
       const channelInfo = /^([^/]+)\/(\d+)$/.exec(id);
       if (channelInfo != null) {
         result.push({
           id: channelInfo[1],
           channel: parseInt(channelInfo[2], 10),
-          series: filterSeries(series, points),
+          series: filterSeries(series, points, sensors),
         });
       } else {
-        result.push({ id, series: filterSeries(series, points) });
+        result.push({ id, series: filterSeries(series, points, sensors) });
       }
     }
     return result;
@@ -413,7 +435,6 @@ export function hasAQData(obj: NonNullable<unknown>): obj is SensorValues {
 }
 
 export function createDB(dbPath: string, options?: Database.Options) {
-  console.log(dbPath);
   const db = new Database(dbPath, options);
   db.exec(fs.readFileSync(SCHEMA_PATH).toString());
   let version = db.pragma('user_version', { simple: true }) as number;

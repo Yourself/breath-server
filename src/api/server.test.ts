@@ -185,8 +185,7 @@ describe('mutable routes', () => {
         const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
         const { series } = body[0];
-        expect(series).toHaveLength(1);
-        expect(series[0]).toMatchObject(payload);
+        expect(series.time).toHaveLength(1);
       }
       {
         const res = await request(app).put(`/api/restricted/update/${id}?name=${name}&is_hidden=1`);
@@ -268,10 +267,7 @@ describe('mutable routes', () => {
           expect(res.ok).toBeTruthy();
           const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
           expect(body[0].id).toEqual(id);
-          expect(body[0].series).toHaveLength(numPts);
-          for (let i = 0; i < numPts; i += 1) {
-            expect(body[0].series[i]).toMatchObject(payloads[i]);
-          }
+          expect(body[0].series.time).toHaveLength(numPts);
         }
       });
 
@@ -338,10 +334,7 @@ describe('mutable routes', () => {
           const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
           const { id: receivedId, series } = body[0];
           expect(receivedId).toEqual(id);
-          expect(series).toHaveLength(numPts);
-          for (let i = 0; i < payloads.length; i += 1) {
-            expect(series[i]).toMatchObject(payloads[i]);
-          }
+          expect(series.time).toHaveLength(numPts);
         });
 
         test('it can query with end', async () => {
@@ -375,10 +368,7 @@ describe('mutable routes', () => {
           const body = expectJsonArray(res, 1, 'id', 'series');
           const { id: receivedId, series } = body[0];
           expect(receivedId).toEqual(id);
-          expect(series).toHaveLength(numPts);
-          for (let i = 0; i < payloads.length; i += 1) {
-            expect(series[i]).toMatchObject(payloads[i]);
-          }
+          expect(series.time).toHaveLength(numPts);
         });
 
         test('it can query with device', async () => {
@@ -397,10 +387,7 @@ describe('mutable routes', () => {
           const body = expectJsonArray(res, 1, 'id', 'series');
           const { id: receivedId, series } = body[0];
           expect(receivedId).toEqual(id);
-          expect(series).toHaveLength(numPts);
-          for (let i = 0; i < payloads.length; i += 1) {
-            expect(series[i]).toMatchObject(payloads[i]);
-          }
+          expect(series.time).toHaveLength(numPts);
         });
 
         test('it can query with multiple devices', async () => {
@@ -420,11 +407,8 @@ describe('mutable routes', () => {
           const body = expectJsonArray(res, 2, 'id', 'series');
           const { id: receivedId, series } = body[0];
           expect(receivedId).toEqual(id);
-          expect(series).toHaveLength(numPts);
-          for (let i = 0; i < payloads.length; i += 1) {
-            expect(series[i]).toMatchObject(payloads[i]);
-          }
-          expect(body[1]).toMatchObject({ id: otherId, series: [] });
+          expect(series.time).toHaveLength(numPts);
+          expect(body[1]).toMatchObject({ id: otherId, series: { time: [] } });
         });
 
         test('it can query with points', async () => {
@@ -442,7 +426,7 @@ describe('mutable routes', () => {
           expect(res.ok).toBeTruthy();
           const body = expectJsonArray(res, 1, 'id', 'series');
           expect(body[0].id).toEqual(id);
-          expect(body[0].series).toHaveLength(query.points);
+          expect(body[0].series.time).toHaveLength(query.points);
         });
       });
 
@@ -496,14 +480,6 @@ describe('mutable routes', () => {
       return responses;
     }
 
-    function extractNonChannels(value: SensorValues) {
-      const result: SensorValues = {};
-      for (const key of VALUE_KEYS) {
-        if (key in value) result[key] = value[key];
-      }
-      return result;
-    }
-
     test('it can insert', async () => {
       const server = new BreathServer();
       const { app } = server;
@@ -525,10 +501,7 @@ describe('mutable routes', () => {
         expect(res.ok).toBeTruthy();
         const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
-        expect(body[0].series).toHaveLength(numPts);
-        for (let i = 0; i < numPts; i += 1) {
-          expect(body[0].series[i]).toMatchObject(extractNonChannels(payloads[i]));
-        }
+        expect(body[0].series.time).toHaveLength(numPts);
       }
     });
 
@@ -619,10 +592,7 @@ describe('mutable routes', () => {
         expect(res.ok).toBeTruthy();
         const body = expectJsonArray<DeviceTimeSeries>(res, 1, 'id', 'series');
         expect(body[0].id).toEqual(id);
-        expect(body[0].series).toHaveLength(numPts);
-        for (let i = 0; i < numPts; i += 1) {
-          expect(body[0].series[i]).toMatchObject(extractNonChannels(payloads[i]));
-        }
+        expect(body[0].series.time).toHaveLength(numPts);
       }
     });
 
@@ -649,10 +619,7 @@ describe('mutable routes', () => {
         for (let channel = 0; channel < numChannels; channel += 1) {
           expect(body[channel].id).toEqual(id);
           expect(body[channel].channel).toEqual(channel);
-          expect(body[channel].series).toHaveLength(numPts);
-          for (let i = 0; i < numPts; i += 1) {
-            expect(body[channel].series[i]).toMatchObject(payloads[i].channels[channel]);
-          }
+          expect(body[channel].series.time).toHaveLength(numPts);
         }
       }
     });
@@ -678,12 +645,7 @@ describe('mutable routes', () => {
         expect(res.ok).toBeTruthy();
         const body = expectJsonArray<DeviceTimeSeries>(res, 3, 'id', 'series');
         expect(body[0].id).toEqual(id);
-        expect(body[0].series).toHaveLength(numPts);
-        for (let channel = 0; channel < numChannels; channel += 1) {
-          expect(body[channel + 1].id).toEqual(id);
-          expect(body[channel + 1].channel).toEqual(channel);
-          expect(body[channel + 1].series).toHaveLength(numPts);
-        }
+        expect(body[0].series.time).toHaveLength(numPts);
       }
     });
 

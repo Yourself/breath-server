@@ -43,18 +43,26 @@ export type QueryParams = {
   points?: string;
 };
 
+export type SensorValuesSeries = {
+  [K in keyof SensorValues]?: (number | undefined)[];
+};
+
 export type ReadingTimePoint = SensorValues & {
   time: Date;
+};
+
+export type ReadingTimeSeries = SensorValuesSeries & {
+  time: Date[];
 };
 
 export type DeviceTimeSeries = {
   id: string;
   channel?: number;
-  series: ReadingTimePoint[];
+  series: ReadingTimeSeries;
 };
 
 export type QueryResponse<T extends string | Date = string> = {
   id: string;
   channel?: number;
-  series: (SensorValues & { time: T })[];
+  series: SensorValuesSeries & { time: T[] };
 }[];

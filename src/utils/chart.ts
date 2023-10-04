@@ -40,22 +40,34 @@ function getDewPoint(T: number | undefined, rhum: number | undefined) {
   return (((c * gamma) / (b - gamma)) * 9) / 5 + 32;
 }
 
-function getYAxisConverter(sensor: Sensor | 'dewp') {
-  if (sensor === 'dewp') {
-    return (values: SensorValues) => getDewPoint(values.atmp, values.rhum);
+function flattenSeries<T extends string | Date>(sensor: Sensor | 'dewp', series: Series<T>) {
+  const plotPts: { x: number; y: number }[] = [];
+  const readings = series[sensor === 'dewp' ? 'atmp' : sensor];
+  if (readings == null) {
+    return plotPts;
   }
-  if (sensor === 'atmp') {
-    return (values: SensorValues) => (values.atmp != null ? (values.atmp * 9) / 5 + 32 : undefined);
-  }
-  return (values: SensorValues) => values[sensor];
-}
+  readings.forEach((pt, i) => {
+    if (pt == null) return;
+    let y: number | undefined;
+    if (sensor === 'dewp') {
+      const rhum = series.rhum?.[i];
+      y = rhum != null ? getDewPoint(pt, rhum) : undefined;
+    } else if (sensor === 'atmp') {
+      y = (pt * 9) / 5 + 32;
+    } else {
+      y = pt;
+    }
+    if (y != null) {
+      plotPts.push({ x: new Date(series.time[i]).getTime(), y });
+    }
+  });
 
-function flattenSeries<T extends string | Date>(sensor: Sensor | 'dewp', pts: Series<T>) {
-  const getY = getYAxisConverter(sensor);
-  return pts.map((pt) => ({ x: new Date(pt.time).getTime(), y: getY(pt) })).filter(({ y }) => y != null) as {
-    x: number;
-    y: number;
-  }[];
+  return plotPts;
+
+  // return series.map((pt) => ({ x: new Date(pt.time).getTime(), y: getY(pt) })).filter(({ y }) => y != null) as {
+  //   x: number;
+  //   y: number;
+  // }[];
 }
 
 export function getDewPointChartData<T extends string | Date = string>(

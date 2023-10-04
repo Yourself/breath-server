@@ -41,7 +41,7 @@ describe('filtering', () => {
 
     test.each([1, 2, 10, 99, 100, 500, 501, 900, 999])('it returns the correct number of points', (desiredPts) => {
       const filtered = filterSeries(points, desiredPts);
-      expect(filtered).toHaveLength(Math.min(desiredPts, points.length));
+      expect(filtered.time).toHaveLength(Math.min(desiredPts, points.length));
     });
   });
 
@@ -65,7 +65,7 @@ describe('filtering', () => {
 
     test.each([1, 2, 10, 99, 100, 500, 501, 900, 999])('it returns the correct number of points', (desiredPts) => {
       const filtered = filterSeries(points, desiredPts);
-      expect(filtered).toHaveLength(Math.min(desiredPts, points.length));
+      expect(filtered.time).toHaveLength(Math.min(desiredPts, points.length));
     });
   });
 
@@ -89,7 +89,7 @@ describe('filtering', () => {
 
     test.each([1, 2, 10, 99, 100, 500, 501, 900, 999])('it returns the correct number of points', (desiredPts) => {
       const filtered = filterSeries(points, desiredPts);
-      expect(filtered).toHaveLength(Math.min(desiredPts, points.length));
+      expect(filtered.time).toHaveLength(Math.min(desiredPts, points.length));
     });
   });
 });
