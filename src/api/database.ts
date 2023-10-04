@@ -82,6 +82,15 @@ export function median(values: number[]) {
   return 0.5 * (sorted[mid - 1] + sorted[mid]);
 }
 
+function removeNullReadings(series: ReadingTimeSeries) {
+  for (const key of VALUE_KEYS) {
+    if (!series[key]?.some((x) => x != null)) {
+      delete series[key];
+    }
+  }
+  return series;
+}
+
 export function filterSeries(
   series: ReadingTimePoint[],
   numPoints: number,
@@ -92,10 +101,10 @@ export function filterSeries(
     filtered[key] = [];
   }
   if (series.length <= numPoints) {
-    for (const pt of series) {
-      filtered.time.push(pt.time);
-      for (const key of sensors) {
-        filtered[key]?.push(pt[key]);
+    filtered.time = series.map((pt) => pt.time.getTime());
+    for (const key of sensors) {
+      if (series.some((pt) => pt[key] != null)) {
+        filtered[key] = series.map((pt) => pt[key]);
       }
     }
     return filtered;
@@ -139,7 +148,7 @@ export function filterSeries(
       accum[key] = [];
     }
     if (hasKeys) {
-      filtered.time.push(pt.time);
+      filtered.time.push(pt.time.getTime());
       for (const key of sensors) {
         filtered[key]?.push(pt[key]);
       }
@@ -157,12 +166,12 @@ export function filterSeries(
     if (remaining > series.length - i) {
       applyFilter(new Date(baseMS + windowMS));
       for (const pt of series.slice(i)) {
-        filtered.time.push(pt.time);
+        filtered.time.push(pt.time.getTime());
         for (const key of sensors) {
           filtered[key]?.push(pt[key]);
         }
       }
-      return filtered;
+      return removeNullReadings(filtered);
     }
     if (time > baseMS + windowMS) {
       baseMS = time;
@@ -173,7 +182,7 @@ export function filterSeries(
 
   applyFilter(endTime);
 
-  return filtered;
+  return removeNullReadings(filtered);
 }
 
 function getQuerySensors({ sensor }: QueryParams) {

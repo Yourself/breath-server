@@ -52,7 +52,7 @@ export type ReadingTimePoint = SensorValues & {
 };
 
 export type ReadingTimeSeries = SensorValuesSeries & {
-  time: Date[];
+  time: number[];
 };
 
 export type DeviceTimeSeries = {
@@ -61,7 +61,7 @@ export type DeviceTimeSeries = {
   series: ReadingTimeSeries;
 };
 
-export type QueryResponse<T extends string | Date = string> = {
+export type QueryResponse<T extends string | Date | number = string> = {
   id: string;
   channel?: number;
   series: SensorValuesSeries & { time: T[] };

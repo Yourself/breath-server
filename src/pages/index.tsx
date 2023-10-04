@@ -190,15 +190,6 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
   const [range, setRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
-    if (ssData == null) {
-      fetchChartData().then((allData) => {
-        setData(allData);
-        setLoading(false);
-      });
-    }
-  }, []);
-
-  useEffect(() => {
     setLoading(true);
     fetchChartData(range).then((allData) => {
       setData(allData);

@@ -53,7 +53,7 @@ export class OGImageGenerator {
     if (!useCachedFile(IMAGE_PATH, this._expireSec)) {
       const points = Math.trunc(this._width / 4).toString();
       const devices = this.server.db.getDevices();
-      const query = this.server.db.getReadings({ points }) as QueryResponse<Date>;
+      const query = this.server.db.getReadings({ points }) as QueryResponse<number>;
       const data = getChartData('atmp', devices, query);
       const configuration: ChartConfiguration = {
         type: 'line',

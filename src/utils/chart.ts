@@ -3,7 +3,7 @@ import { DeviceMetadata, QueryResponse, SensorValues, getCapability } from '../a
 import { assertNever } from './assert';
 
 export type Sensor = keyof SensorValues | 'dewp';
-type Series<T extends string | Date = string> = QueryResponse<T>[0]['series'];
+type Series<T extends string | Date | number = string> = QueryResponse<T>[0]['series'];
 
 const palette = [
   '#48beb7',
@@ -40,7 +40,7 @@ function getDewPoint(T: number | undefined, rhum: number | undefined) {
   return (((c * gamma) / (b - gamma)) * 9) / 5 + 32;
 }
 
-function flattenSeries<T extends string | Date>(sensor: Sensor | 'dewp', series: Series<T>) {
+function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp', series: Series<T>) {
   const plotPts: { x: number; y: number }[] = [];
   const readings = series[sensor === 'dewp' ? 'atmp' : sensor];
   if (readings == null) {
@@ -94,7 +94,7 @@ export function getDewPointChartData<T extends string | Date = string>(
   return data;
 }
 
-export function getChartData<T extends string | Date = string>(
+export function getChartData<T extends string | Date | number = string>(
   sensor: Sensor,
   devices: DeviceMetadata[],
   queryData: QueryResponse<T>
