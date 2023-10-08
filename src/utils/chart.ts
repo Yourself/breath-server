@@ -23,6 +23,8 @@ const palette = [
   '#ef2fad',
 ];
 
+const spanGaps = 150000;
+
 function makeRGBA(color: string, alpha: number) {
   const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(color);
   return match
@@ -58,6 +60,10 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
       y = pt;
     }
     const x = new Date(series.time[i]).getTime();
+    const prev = plotPts[plotPts.length - 1];
+    if (prev != null && x - prev.x > spanGaps) {
+      plotPts.push({ x: 0.5 * (prev.x + x), y: NaN });
+    }
     plotPts.push({ x, y: y ?? NaN });
   });
 
@@ -160,7 +166,7 @@ export function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
       },
       line: {
         borderWidth: 2,
-        spanGaps: 150000,
+        spanGaps: false,
       },
     },
     plugins: {
