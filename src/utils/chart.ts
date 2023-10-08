@@ -23,7 +23,7 @@ const palette = [
   '#ef2fad',
 ];
 
-const spanGaps = 150000;
+const spanRatio = 150 / 86400;
 
 function makeRGBA(color: string, alpha: number) {
   const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/.exec(color);
@@ -48,6 +48,9 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
   if (readings == null) {
     return plotPts;
   }
+  const t0 = new Date(series.time[0]).getTime();
+  const tf = new Date(series.time[series.time.length - 1]).getTime();
+  const span = (tf - t0) * spanRatio;
   readings.forEach((pt, i) => {
     if (pt == null) return;
     let y: number | undefined;
@@ -61,7 +64,7 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
     }
     const x = new Date(series.time[i]).getTime();
     const prev = plotPts[plotPts.length - 1];
-    if (prev != null && x - prev.x > spanGaps) {
+    if (prev != null && x - prev.x > span && !Number.isNaN(prev.y)) {
       plotPts.push({ x: 0.5 * (prev.x + x), y: NaN });
     }
     plotPts.push({ x, y: y ?? NaN });
