@@ -120,6 +120,7 @@ function DatePicker({ range, onSetRange }: { range?: DateRange; onSetRange: (ran
   const handleOpenModal = () => {
     setLocalRange(range);
     setShowModal(true);
+    ReactModal.setAppElement('body');
   };
 
   const handleToday = () => {
@@ -174,6 +175,7 @@ function DatePicker({ range, onSetRange }: { range?: DateRange; onSetRange: (ran
       >
         <DayPicker
           mode="range"
+          defaultMonth={localRange?.from}
           selected={localRange}
           onSelect={setLocalRange}
           footer={footer}
@@ -213,8 +215,8 @@ function AllCharts({ ssData, sensors }: { ssData?: AllChartsData; sensors: Senso
         <div>Loading...</div>
       ) : (
         <div className="chart-container">
-          {sensors.map((sensor) => (
-            <AQChart sensor={sensor} data={data[sensor]} />
+          {sensors.map((sensor, i) => (
+            <AQChart key={`${sensor}${i}`} sensor={sensor} data={data[sensor]} />
           ))}
         </div>
       )}
