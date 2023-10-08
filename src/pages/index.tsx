@@ -52,11 +52,14 @@ function ChartTitle({ sensor }: SensorData) {
 function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
   return (
     <div className="aq-chart">
-      <ChartTitle sensor={sensor} />
-      {data == null ? (
-        <div className="no-data">No Data</div>
+      <div className="chart-title-container">
+        <ChartTitle sensor={sensor} />
+        <div className="chart-title-sensor">{sensor}</div>
+      </div>
+      {data == null || data.datasets.every((set) => set.data.length === 0) ? (
+        <div className="chart-no-data">No Data</div>
       ) : (
-        <Line options={getCommonChartOptions(sensor)} data={data} />
+        <Line className="chart-line-data" options={getCommonChartOptions(sensor)} data={data} />
       )}
     </div>
   );
