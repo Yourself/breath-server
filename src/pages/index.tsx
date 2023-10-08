@@ -4,6 +4,7 @@ import 'chartjs-adapter-date-fns';
 import { addDays, format } from 'date-fns';
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { DateRange, DayPicker } from 'react-day-picker';
@@ -11,7 +12,7 @@ import 'react-day-picker/dist/style.css';
 import ReactModal from 'react-modal';
 import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS } from '../api/types';
 import { assertNever } from '../utils/assert';
-import { Sensor, getChartData, getCommonChartOptions } from '../utils/chart';
+import { Sensor, getChartData, getCommonChartOptions, isSensor } from '../utils/chart';
 
 Chart.register(LinearScale, LineElement, PointElement, Tooltip, Legend, TimeScale);
 
@@ -63,10 +64,10 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
 
 type AllChartsData = { [K in keyof SensorValues]: ChartData<'line'> } & { dewp?: ChartData<'line'> };
 
-async function fetchChartData(dateRange?: DateRange) {
+async function fetchChartData(dateRange?: DateRange, sensors?: (keyof SensorValues)[]) {
   const params: { points: number; sensor: string; start?: Date; end?: Date } = {
     points: 720,
-    sensor: 'atmp,rhum,rco2,pm02',
+    sensor: sensors ? sensors.join(',') : 'atmp,rhum,rco2,pm02',
   };
 
   if (dateRange?.from) {
@@ -184,14 +185,22 @@ function DatePicker({ range, onSetRange }: { range?: DateRange; onSetRange: (ran
   );
 }
 
-function AllCharts({ ssData }: { ssData?: AllChartsData }) {
+function filterRealSensors(sensors: Sensor[]): (keyof SensorValues)[] {
+  const actual = new Set<keyof SensorValues>();
+  for (const sensor of sensors) {
+    actual.add(sensor === 'dewp' ? 'rhum' : sensor);
+  }
+  return Array.from(actual);
+}
+
+function AllCharts({ ssData, sensors }: { ssData?: AllChartsData; sensors: Sensor[] }) {
   const [data, setData] = useState<AllChartsData>(ssData ?? {});
   const [loading, setLoading] = useState(ssData == null);
   const [range, setRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     setLoading(true);
-    fetchChartData(range).then((allData) => {
+    fetchChartData(range, filterRealSensors(sensors)).then((allData) => {
       setData(allData);
       setLoading(false);
     });
@@ -204,10 +213,9 @@ function AllCharts({ ssData }: { ssData?: AllChartsData }) {
         <div>Loading...</div>
       ) : (
         <div className="chart-container">
-          <AQChart sensor="atmp" data={data.atmp} />
-          <AQChart sensor="dewp" data={data.dewp} />
-          <AQChart sensor="rco2" data={data.rco2} />
-          <AQChart sensor="pm02" data={data.pm02} />
+          {sensors.map((sensor) => (
+            <AQChart sensor={sensor} data={data[sensor]} />
+          ))}
         </div>
       )}
     </>
@@ -224,7 +232,19 @@ export const getServerSideProps: GetServerSideProps<ServerProps> = async ({ req 
   };
 };
 
+function splitSensors(names: string): Sensor[] {
+  if (names === 'all') {
+    return ['atmp', 'dewp', 'rhum', 'rco2', 'tvoc', 'nox', 'pm01', 'pm02', 'pm10', 'pCnt'];
+  }
+  return names
+    .split(',')
+    .map((s) => s.toLowerCase())
+    .filter(isSensor);
+}
+
 export default function Home({ url, data }: ServerProps) {
+  const searchParams = useSearchParams();
+  const plotNames = searchParams.get('sensors') ?? 'atmp,dewp,rco2,pm02';
   return (
     <>
       <Head>
@@ -237,7 +257,7 @@ export default function Home({ url, data }: ServerProps) {
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </Head>
-      <AllCharts ssData={data} />
+      <AllCharts ssData={data} sensors={splitSensors(plotNames)} />
     </>
   );
 }

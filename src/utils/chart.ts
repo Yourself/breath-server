@@ -1,5 +1,5 @@
 import { ChartData, ChartOptions } from 'chart.js';
-import { DeviceMetadata, QueryResponse, SensorValues, getCapability } from '../api/types';
+import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS, getCapability } from '../api/types';
 import { assertNever } from './assert';
 
 export type Sensor = keyof SensorValues | 'dewp';
@@ -63,11 +63,10 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
   });
 
   return plotPts;
+}
 
-  // return series.map((pt) => ({ x: new Date(pt.time).getTime(), y: getY(pt) })).filter(({ y }) => y != null) as {
-  //   x: number;
-  //   y: number;
-  // }[];
+export function isSensor(name: string): name is Sensor {
+  return VALUE_KEYS.some((key) => key === name) || name === 'dewp';
 }
 
 export function getDewPointChartData<T extends string | Date = string>(
