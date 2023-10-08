@@ -195,7 +195,12 @@ function DatePicker({ range, onSetRange }: { range?: DateRange; onSetRange: (ran
 function filterRealSensors(sensors: Sensor[]): (keyof SensorValues)[] {
   const actual = new Set<keyof SensorValues>();
   for (const sensor of sensors) {
-    actual.add(sensor === 'dewp' ? 'rhum' : sensor);
+    if (sensor === 'dewp') {
+      actual.add('rhum');
+      actual.add('atmp');
+    } else {
+      actual.add(sensor);
+    }
   }
   return Array.from(actual);
 }
