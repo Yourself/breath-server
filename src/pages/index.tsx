@@ -59,7 +59,9 @@ function AQChart({ sensor, data }: SensorData & { data?: ChartData<'line'> }) {
       {data == null || data.datasets.every((set) => set.data.length === 0) ? (
         <div className="chart-no-data">No Data</div>
       ) : (
-        <Line className="chart-line-data" options={getCommonChartOptions(sensor)} data={data} />
+        <div className="chart-line-data">
+          <Line options={getCommonChartOptions(sensor)} data={data} />
+        </div>
       )}
     </div>
   );
@@ -241,10 +243,7 @@ function splitSensors(names: string): Sensor[] {
   if (names === 'all') {
     return ['atmp', 'dewp', 'rhum', 'rco2', 'tvoc', 'nox', 'pm01', 'pm02', 'pm10', 'pCnt'];
   }
-  return names
-    .split(',')
-    .map((s) => s.toLowerCase())
-    .filter(isSensor);
+  return names.split(',').filter(isSensor);
 }
 
 export default function Home({ url, data }: ServerProps) {
