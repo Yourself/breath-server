@@ -168,5 +168,8 @@ export function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
         position: 'top',
       },
     },
+    animation: {
+      duration: 0,
+    },
   };
 }
