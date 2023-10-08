@@ -57,9 +57,8 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
     } else {
       y = pt;
     }
-    if (y != null) {
-      plotPts.push({ x: new Date(series.time[i]).getTime(), y });
-    }
+    const x = new Date(series.time[i]).getTime();
+    plotPts.push({ x, y: y ?? NaN });
   });
 
   return plotPts;
@@ -161,6 +160,7 @@ export function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
       },
       line: {
         borderWidth: 2,
+        spanGaps: 150000,
       },
     },
     plugins: {
