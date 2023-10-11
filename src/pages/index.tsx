@@ -261,6 +261,7 @@ export default function Home({ url, data }: ServerProps) {
         <meta property="og:title" content="Samsara Bar & Grill" />
         <meta property="og:description" content="Live air quality metrics" />
         <meta property="og:image" content={`${url}/android-chrome-512x512.png`} />
+        <meta name="robots" content="noindex,nofollow" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
