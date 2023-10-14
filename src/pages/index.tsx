@@ -253,7 +253,7 @@ function splitSensors(names: string): Sensor[] {
 
 export default function Home({ url, data }: ServerProps) {
   const searchParams = useSearchParams();
-  const plotNames = searchParams.get('sensors') ?? 'atmp,dewp,rco2,pm02';
+  const plotNames = searchParams.get('sensors') ?? 'atmp,rhum,rco2,pm02';
   return (
     <>
       <Head>
