@@ -120,6 +120,7 @@ export function getChartData<T extends string | Date | number = string>(
         borderColor: palette[i],
         backgroundColor: makeRGBA(palette[i], 0.5),
         parsing: false,
+        pointHitRadius: 8,
       });
     }
   }
