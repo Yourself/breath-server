@@ -75,7 +75,7 @@ function flattenSeries<T extends string | Date | number>(
     if (pt == null) return;
     let y: number | undefined = calibrate(pt, cal);
     if (sensor === 'dewp') {
-      const rhum = calibrate(series.rhum?.[i], cal);
+      const rhum = calibrate(series.rhum?.[i], calibration?.rhum ?? [0, 1]);
       y = rhum != null ? getDewPoint(y, Math.max(0, Math.min(rhum, 100))) : undefined;
     } else if (sensor === 'atmp') {
       y = (y * 9) / 5 + 32;
