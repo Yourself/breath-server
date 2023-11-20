@@ -23,6 +23,12 @@ export type DeviceCapabilities = {
   [K in keyof SensorValues as K extends string ? `has_${K}` : never]?: boolean;
 };
 
+export type DeviceCalibration = {
+  [K in keyof SensorValues]?: number[];
+};
+
+export type DeviceCalibrationWithId = { id: string } & DeviceCalibration;
+
 export type DeviceMetadata = DeviceCapabilities & {
   id: string;
   name?: string;
@@ -42,6 +48,25 @@ export type QueryParams = {
   mode?: string;
   points?: string;
 };
+
+export function isQueryParams(params: Record<string, unknown>): params is QueryParams {
+  const simpleKeys = ['start', 'end', 'mode', 'points'] as const;
+  for (const key of simpleKeys) {
+    if (key in params && typeof params[key] !== 'string') {
+      return false;
+    }
+  }
+
+  if ('device' in params && typeof params.device !== 'string' && !Array.isArray(params.device)) {
+    return false;
+  }
+
+  if ('sensor' in params && typeof params.sensor !== 'string' && !Array.isArray(params.sensor)) {
+    return false;
+  }
+
+  return true;
+}
 
 export type SensorValuesSeries = {
   [K in keyof SensorValues]?: (number | undefined)[];

@@ -10,7 +10,7 @@ import { Line } from 'react-chartjs-2';
 import { DateRange, DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import ReactModal from 'react-modal';
-import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS } from '../api/types';
+import { DeviceCalibrationWithId, DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS } from '../api/types';
 import { assertNever } from '../utils/assert';
 import { Sensor, getChartData, getCommonChartOptions, isSensor } from '../utils/chart';
 
@@ -90,19 +90,21 @@ async function fetchChartData(dateRange?: DateRange, sensors?: (keyof SensorValu
     }
   }
 
-  const [devRes, queryRes] = await Promise.all([
+  const [devRes, queryRes, calibrationsRes] = await Promise.all([
     axios.get<DeviceMetadata[]>('/api/devices'),
     axios.get<QueryResponse>('/api/query', { params }),
+    axios.get<DeviceCalibrationWithId[]>('/api/calibrations'),
   ]);
 
   const allData: AllChartsData = {};
   const devices = devRes.data;
   const query = queryRes.data;
+  const calibrations = calibrationsRes.data;
 
   for (const key of VALUE_KEYS) {
-    allData[key] = getChartData(key, devices, query);
+    allData[key] = getChartData(key, devices, query, calibrations);
   }
-  allData.dewp = getChartData('dewp', devices, query);
+  allData.dewp = getChartData('dewp', devices, query, calibrations);
 
   return allData;
 }

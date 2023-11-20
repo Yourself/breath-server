@@ -6,6 +6,7 @@ import { assertNever } from '../utils/assert';
 import { parseInteger } from '../utils/parse';
 import {
   CAPABILITY_KEYS,
+  DeviceCalibration,
   DeviceCapabilities,
   DeviceMetadata,
   DeviceMetadataUpdate,
@@ -21,7 +22,7 @@ import {
 
 const MIGRATIONS_PATH = getDir('migrations');
 const SCHEMA_PATH = path.join(MIGRATIONS_PATH, 'schema.sql');
-const VERSION = 1;
+const VERSION = 2;
 
 type SensorReading = SensorValues & {
   id: string;
@@ -211,6 +212,8 @@ export class AirQualityDB {
 
   private readonly delete: Database.Transaction<(id: string) => void>;
 
+  private readonly calibrations: Database.Statement<{ id: string }>;
+
   constructor(db: Database.Database) {
     this._db = db;
 
@@ -243,6 +246,8 @@ export class AirQualityDB {
       deleteReadings.run(id);
       deleteSensor.run(id);
     });
+
+    this.calibrations = this._db.prepare(`SELECT * FROM calibration WHERE id = $id`);
   }
 
   getDevices() {
@@ -258,6 +263,21 @@ export class AirQualityDB {
         }
       }
       result.push(metadata);
+    }
+    return result;
+  }
+
+  getCalibration(id: string) {
+    const calibrations = this.calibrations.all({ id }) as {
+      id: string;
+      sensor: keyof SensorValues;
+      c0: number;
+      c1: number;
+    }[];
+
+    const result: DeviceCalibration = {};
+    for (const cal of calibrations) {
+      result[cal.sensor] = [cal.c0, cal.c1];
     }
     return result;
   }

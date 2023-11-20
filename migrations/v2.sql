@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS calibration (
+  id TEXT NOT NULL UNIQUE,
+  sensor TEXT NOT NULL,
+  c0 REAL NOT NULL DEFAULT 0,
+  c1 REAL NOT NULL DEFAULT 0
+);
+
+PRAGMA user_version = 2;

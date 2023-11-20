@@ -3,7 +3,15 @@ import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import { parseBoolean } from '../utils/parse';
 import { AirQualityDB, createDB, hasAQData, isDeviceIdValid } from './database';
-import { CAPABILITY_KEYS, DeviceMetadataUpdate, QueryParams } from './types';
+import { CAPABILITY_KEYS, DeviceMetadataUpdate, isQueryParams } from './types';
+
+function parseDeviceQueryString(query: Record<string, unknown>): string[] {
+  const { device } = query;
+  if (device == null) {
+    return [];
+  }
+  return Array.isArray(device) ? device : [device];
+}
 
 export class BreathServer {
   db: AirQualityDB;
@@ -21,6 +29,8 @@ export class BreathServer {
     });
     this.app.get('/api/devices/', this.devices.bind(this));
     this.app.get('/api/query', this.query.bind(this));
+    this.app.get('/api/calibration/:device', this.calibration.bind(this));
+    this.app.get('/api/calibrations', this.calibrations.bind(this));
     this.app.post('/api/restricted/submit/:device', this.submit.bind(this));
     this.app.put('/api/restricted/update/:device', this.update.bind(this));
     this.app.put('/api/restricted/auto-update/:device', this.autoUpdate.bind(this));
@@ -39,7 +49,27 @@ export class BreathServer {
   }
 
   query(req: Request, res: Response) {
-    res.send(this.db.getReadings(req.query as QueryParams));
+    if (isQueryParams(req.query)) {
+      res.send(this.db.getReadings(req.query));
+    } else {
+      res.status(400).send({ error: 'Invalid query format' });
+    }
+  }
+
+  calibration(req: Request<{ device: string }>, res: Response) {
+    if (!isDeviceIdValid(req.params.device)) {
+      res.status(400).send({ error: 'Invalid device ID' });
+      return;
+    }
+    res.send(this.db.getCalibration(req.params.device.toLowerCase()));
+  }
+
+  calibrations(req: Request, res: Response) {
+    const devices = parseDeviceQueryString(req.query);
+    if (devices.length === 0) {
+      devices.push(...this.db.getDevices().map((meta) => meta.id));
+    }
+    res.send(devices.map((dev) => ({ id: dev, ...this.db.getCalibration(dev) })));
   }
 
   private submit(req: Request<{ device: string }>, res: Response) {

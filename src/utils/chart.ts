@@ -1,5 +1,13 @@
 import { ChartData, ChartOptions } from 'chart.js';
-import { DeviceMetadata, QueryResponse, SensorValues, VALUE_KEYS, getCapability } from '../api/types';
+import {
+  DeviceCalibration,
+  DeviceCalibrationWithId,
+  DeviceMetadata,
+  QueryResponse,
+  SensorValues,
+  VALUE_KEYS,
+  getCapability,
+} from '../api/types';
 import { assertNever } from './assert';
 
 export type Sensor = keyof SensorValues | 'dewp';
@@ -42,9 +50,21 @@ function getDewPoint(T: number | undefined, rhum: number | undefined) {
   return (((c * gamma) / (b - gamma)) * 9) / 5 + 32;
 }
 
-function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp', series: Series<T>) {
+function calibrate(reading: undefined, calibration: number[]): undefined;
+function calibrate(reading: number, calibration: number[]): number;
+function calibrate(reading: number | undefined, calibration: number[]): number | undefined;
+function calibrate(reading: number | undefined, calibration: number[]) {
+  return reading != null ? calibration.reduceRight((acc, x) => acc * reading + x, 0) : undefined;
+}
+
+function flattenSeries<T extends string | Date | number>(
+  sensor: Sensor | 'dewp',
+  series: Series<T>,
+  calibration?: DeviceCalibration
+) {
   const plotPts: { x: number; y: number }[] = [];
   const readings = series[sensor === 'dewp' ? 'atmp' : sensor];
+  const cal = calibration?.[sensor === 'dewp' ? 'atmp' : sensor] ?? [0, 1];
   if (readings == null) {
     return plotPts;
   }
@@ -53,14 +73,12 @@ function flattenSeries<T extends string | Date | number>(sensor: Sensor | 'dewp'
   const span = Math.max((tf - t0) * spanRatio, 60 * 1000);
   readings.forEach((pt, i) => {
     if (pt == null) return;
-    let y: number | undefined;
+    let y: number | undefined = calibrate(pt, cal);
     if (sensor === 'dewp') {
-      const rhum = series.rhum?.[i];
-      y = rhum != null ? getDewPoint(pt, rhum) : undefined;
+      const rhum = calibrate(series.rhum?.[i], cal);
+      y = rhum != null ? getDewPoint(y, rhum) : undefined;
     } else if (sensor === 'atmp') {
-      y = (pt * 9) / 5 + 32;
-    } else {
-      y = pt;
+      y = (y * 9) / 5 + 32;
     }
     const x = new Date(series.time[i]).getTime();
     const prev = plotPts[plotPts.length - 1];
@@ -104,19 +122,21 @@ export function getDewPointChartData<T extends string | Date = string>(
 export function getChartData<T extends string | Date | number = string>(
   sensor: Sensor,
   devices: DeviceMetadata[],
-  queryData: QueryResponse<T>
+  queryData: QueryResponse<T>,
+  calibrations?: DeviceCalibrationWithId[]
 ) {
   const data: ChartData<'line'> = {
     datasets: [],
   };
   for (let i = 0; i < devices.length; i += 1) {
     const device = devices[i];
+    const cal = calibrations?.find((c) => c.id === device.id);
     const series = queryData.find((ts) => ts.id === device.id)?.series;
     const hasSensor = sensor === 'dewp' ? device.has_atmp && device.has_rhum : device[getCapability(sensor)];
     if (hasSensor && series) {
       data.datasets.push({
         label: device.name ?? device.id,
-        data: flattenSeries(sensor, series),
+        data: flattenSeries(sensor, series, cal),
         borderColor: palette[i],
         backgroundColor: makeRGBA(palette[i], 0.5),
         parsing: false,
