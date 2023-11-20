@@ -76,9 +76,11 @@ function flattenSeries<T extends string | Date | number>(
     let y: number | undefined = calibrate(pt, cal);
     if (sensor === 'dewp') {
       const rhum = calibrate(series.rhum?.[i], cal);
-      y = rhum != null ? getDewPoint(y, rhum) : undefined;
+      y = rhum != null ? getDewPoint(y, Math.max(0, Math.min(rhum, 100))) : undefined;
     } else if (sensor === 'atmp') {
       y = (y * 9) / 5 + 32;
+    } else if (sensor === 'rhum') {
+      y = Math.max(0, Math.min(y, 100));
     }
     const x = new Date(series.time[i]).getTime();
     const prev = plotPts[plotPts.length - 1];
