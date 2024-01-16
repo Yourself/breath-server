@@ -1,26 +1,27 @@
-export const getCapability = <T extends string>(key: T) => `has_${key}` as const;
+type ToCapabilityKey<K extends string> = `has_${K}`;
+
+export const getCapability = <T extends string>(key: T): ToCapabilityKey<T> => `has_${key}` as const;
 
 export const VALUE_KEYS = ['rco2', 'pm01', 'pm02', 'pm10', 'pCnt', 'tvoc', 'nox', 'atmp', 'rhum'] as const;
-export const CAPABILITY_KEYS = VALUE_KEYS.map(getCapability);
+export type ValueKey = (typeof VALUE_KEYS)[number];
 
-export type SensorValues = {
-  rco2?: number;
-  pm01?: number;
-  pm02?: number;
-  pm10?: number;
-  pCnt?: number;
-  tvoc?: number;
-  nox?: number;
-  atmp?: number;
-  rhum?: number;
-};
+type CapabilityKeys<T extends readonly string[]> = T extends readonly [
+  infer F extends string,
+  ...infer Rest extends readonly string[]
+]
+  ? readonly [ToCapabilityKey<F>, ...CapabilityKeys<Rest>]
+  : T;
 
+export const CAPABILITY_KEYS = VALUE_KEYS.map(getCapability) as unknown as CapabilityKeys<typeof VALUE_KEYS>;
+export type CapabilityKey = CapabilityKeys<typeof VALUE_KEYS>[number];
+
+export type SensorValues = { [K in ValueKey]?: number };
 export type DeviceReading = SensorValues & {
   channels?: SensorValues[];
 };
 
 export type DeviceCapabilities = {
-  [K in keyof SensorValues as K extends string ? `has_${K}` : never]?: boolean;
+  [K in CapabilityKey]?: boolean;
 };
 
 export type DeviceCalibration = {
@@ -66,6 +67,41 @@ export function isQueryParams(params: Record<string, unknown>): params is QueryP
   }
 
   return true;
+}
+
+export function parseQuerySensors({ sensor }: { sensor?: string | string[] }) {
+  if (sensor == null) return VALUE_KEYS;
+  const args = Array.isArray(sensor) ? sensor.flatMap((s) => s.split(',')) : sensor.split(',');
+  const sensors = new Set<keyof SensorValues>();
+  for (const arg of args) {
+    const key = VALUE_KEYS.find((k) => k === arg);
+    if (key != null) {
+      sensors.add(key);
+    }
+  }
+  return Array.from(sensors);
+}
+
+export type CorrelationParams = {
+  devices?: string[];
+  sensors: readonly (keyof SensorValues)[];
+  resolution: number;
+};
+
+export function parseCorrelationParams(params: Record<string, unknown>): CorrelationParams | undefined {
+  if (!('sensor' in params)) return undefined;
+  const devices = ((): string[] | undefined => {
+    if (!('device' in params)) {
+      return undefined;
+    }
+    if (Array.isArray(params.device)) {
+      return typeof params.device[0] === 'string' ? params.device : undefined;
+    }
+    return typeof params.device === 'string' ? params.device.split(',') : undefined;
+  })();
+  const sensors = parseQuerySensors(params);
+  const resolution = Number(params?.resolution ?? '600000');
+  return { devices, sensors, resolution };
 }
 
 export type SensorValuesSeries = {

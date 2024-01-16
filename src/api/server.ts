@@ -3,7 +3,7 @@ import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import { parseBoolean } from '../utils/parse';
 import { AirQualityDB, createDB, hasAQData, isDeviceIdValid } from './database';
-import { CAPABILITY_KEYS, DeviceMetadataUpdate, isQueryParams } from './types';
+import { CAPABILITY_KEYS, DeviceMetadataUpdate, isQueryParams, parseCorrelationParams } from './types';
 
 function parseDeviceQueryString(query: Record<string, unknown>): string[] {
   const { device } = query;
@@ -31,6 +31,7 @@ export class BreathServer {
     this.app.get('/api/query', this.query.bind(this));
     this.app.get('/api/calibration/:device', this.calibration.bind(this));
     this.app.get('/api/calibrations', this.calibrations.bind(this));
+    this.app.get('/api/correlated', this.correlated.bind(this));
     this.app.post('/api/restricted/submit/:device', this.submit.bind(this));
     this.app.put('/api/restricted/update/:device', this.update.bind(this));
     this.app.put('/api/restricted/auto-update/:device', this.autoUpdate.bind(this));
@@ -70,6 +71,15 @@ export class BreathServer {
       devices.push(...this.db.getDevices().map((meta) => meta.id));
     }
     res.send(devices.map((dev) => ({ id: dev, ...this.db.getCalibration(dev) })));
+  }
+
+  correlated(req: Request, res: Response) {
+    const params = parseCorrelationParams(req.query);
+    if (!params) {
+      res.status(400).send({ error: 'Invalid query format' });
+      return;
+    }
+    res.send(this.db.getCorrelated(params));
   }
 
   private submit(req: Request<{ device: string }>, res: Response) {

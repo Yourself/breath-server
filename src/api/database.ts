@@ -6,15 +6,16 @@ import { assertNever } from '../utils/assert';
 import { parseInteger } from '../utils/parse';
 import {
   CAPABILITY_KEYS,
+  CorrelationParams as CorrelationQueryParams,
   DeviceCalibration,
   DeviceCapabilities,
   DeviceMetadata,
   DeviceMetadataUpdate,
   DeviceReading,
   DeviceTimeSeries,
-  QueryParams,
   ReadingTimePoint,
   ReadingTimeSeries,
+  QueryParams as ReadingsQueryParams,
   SensorValues,
   VALUE_KEYS,
   getCapability,
@@ -65,8 +66,8 @@ export function isDeviceIdValid(id: string) {
   return !/[\s/]+/.test(id);
 }
 
-export function median(values: number[]) {
-  if (values.length === 0) {
+export function median(values: number[] | undefined) {
+  if (!values || values.length === 0) {
     return undefined;
   }
   if (values.length === 1) {
@@ -186,7 +187,7 @@ export function filterSeries(
   return removeNullReadings(filtered);
 }
 
-function getQuerySensors({ sensor }: QueryParams) {
+function getQuerySensors({ sensor }: ReadingsQueryParams) {
   if (sensor == null) return VALUE_KEYS;
   const args = Array.isArray(sensor) ? sensor.flatMap((s) => s.split(',')) : sensor.split(',');
   const sensors = new Set<keyof SensorValues>();
@@ -282,7 +283,7 @@ export class AirQualityDB {
     return result;
   }
 
-  getReadings(query: QueryParams): DeviceTimeSeries[] {
+  getReadings(query: ReadingsQueryParams): DeviceTimeSeries[] {
     const conditions = [];
     const values = [];
 
@@ -382,6 +383,67 @@ export class AirQualityDB {
       }
     }
     return result;
+  }
+
+  getCorrelated({ devices, sensors, resolution }: CorrelationQueryParams) {
+    const deviceIds = devices ?? this.getDevices().map(({ id }) => id);
+
+    const sensorConditions = sensors.map((sensor) => `${sensor} IS NOT NULL`).join(' AND ');
+
+    const deviceCondition = deviceIds.map((id) => `id = '${id}'`).join(' OR ');
+
+    const timeCondition = `time >= (SELECT MAX(time) FROM (SELECT id, time FROM air_quality_log WHERE ${sensorConditions} AND (${deviceCondition}) GROUP BY id))`;
+
+    const allSensors = sensors.join(',');
+    const sql = `SELECT time,id,${allSensors} FROM air_quality_log WHERE ${sensorConditions} AND (${deviceCondition}) AND ${timeCondition} ORDER BY time`;
+    const rows = this._db.prepare(sql).all() as AQLogRow[];
+    type Accumulator = { [K in keyof SensorValues]?: number[] };
+    const accumulators = new Map<string, Accumulator>();
+    const output: { devices: string[] } & { [K in keyof SensorValues]?: number[][] } = { devices: deviceIds };
+    for (const sensor of sensors) {
+      output[sensor] = deviceIds.map(() => []);
+    }
+    const makeAccumulator = () => {
+      const acc = {} as Accumulator;
+      for (const sensor of sensors) {
+        acc[sensor] = [];
+      }
+      return acc;
+    };
+    const collect = (row: AQLogRow) => {
+      const acc = accumulators.get(row.id) ?? makeAccumulator();
+      accumulators.set(row.id, acc);
+      for (const sensor of sensors) {
+        const val = row[sensor];
+        if (val) {
+          acc[sensor]?.push(val);
+        }
+      }
+    };
+    const emit = () => {
+      const accs = deviceIds.map((id) => accumulators.get(id));
+      const medBySensor = sensors.map((sensor) => ({ sensor, medians: accs.map((a) => median(a?.[sensor])) }));
+      if (medBySensor.every(({ medians }) => medians.every((x) => x !== undefined))) {
+        medBySensor.forEach(({ sensor, medians }) => output[sensor]?.forEach((o, i) => o.push(medians[i] as number)));
+      }
+      deviceIds.forEach((id) => accumulators.set(id, makeAccumulator()));
+    };
+    let time;
+    for (const row of rows) {
+      const t = new Date(row.time).getTime();
+      if (!time) {
+        time = t;
+      }
+      if (time + resolution < t) {
+        emit();
+        while (time + resolution < t) {
+          time += resolution;
+        }
+      }
+      collect(row);
+    }
+
+    return output;
   }
 
   insertAirQuality(id: string, quality: DeviceReading) {
