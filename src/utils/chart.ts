@@ -70,7 +70,7 @@ function flattenSeries<T extends string | Date | number>(
   }
   const t0 = new Date(series.time[0]).getTime();
   const tf = new Date(series.time[series.time.length - 1]).getTime();
-  const span = Math.max((tf - t0) * spanRatio, 60 * 1000);
+  const span = Math.max((tf - t0) * spanRatio, 120 * 1000);
   readings.forEach((pt, i) => {
     if (pt == null) return;
     let y: number | undefined = calibrate(pt, cal);
