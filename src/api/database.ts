@@ -306,7 +306,9 @@ export class AirQualityDB {
       values.push(normalizeDate(start));
     } else {
       conditions.push(`time BETWEEN DATETIME(?, 'unixepoch') AND DATETIME(?, 'unixepoch')`);
-      values.push(normalizeDate(start), normalizeDate(end));
+      const endTime = normalizeDate(end);
+      const startTime = Math.max(normalizeDate(start), endTime - 24 * 60 * 60 * 7);
+      values.push(startTime, endTime);
     }
 
     if (Array.isArray(query.device)) {

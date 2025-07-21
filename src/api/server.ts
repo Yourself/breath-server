@@ -10,7 +10,7 @@ function parseDeviceQueryString(query: Record<string, unknown>): string[] {
   if (device == null) {
     return [];
   }
-  return Array.isArray(device) ? device : [device];
+  return Array.isArray(device) ? device : [`${device}`];
 }
 
 export class BreathServer {

@@ -181,10 +181,10 @@ function DatePicker({ range, onSetRange }: { range?: DateRange; onSetRange: (ran
         }}
       >
         <DayPicker
-          mode="range"
+          mode="single"
           defaultMonth={localRange?.from}
-          selected={localRange}
-          onSelect={setLocalRange}
+          selected={localRange?.from}
+          onSelect={(date) => setLocalRange(date && { from: date })}
           footer={footer}
           showOutsideDays
           fixedWeeks

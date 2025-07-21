@@ -73,7 +73,7 @@ export class OGImageGenerator {
         },
       });
       const buffer = canvas.renderToBufferSync(configuration);
-      writeFileSync(this._cacheFile, buffer, 'base64');
+      writeFileSync(this._cacheFile, new DataView(buffer.buffer), 'base64');
     }
     res.sendFile(IMAGE_PATH);
   }

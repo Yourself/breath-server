@@ -178,6 +178,9 @@ export function getCommonChartOptions(sensor: Sensor): ChartOptions<'line'> {
     scales: {
       x: {
         type: 'time',
+        time: {
+          minUnit: 'hour',
+        },
       },
       y: {
         title: {
