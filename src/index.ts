@@ -1,5 +1,4 @@
 import next from 'next';
-import { OGImageGenerator } from './api/ogimage';
 import { BreathServer } from './api/server';
 import { getDbPath, isDev } from './env';
 
@@ -12,8 +11,6 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const server = new BreathServer(getDbPath());
-  const ogImage = new OGImageGenerator(server);
-  ogImage.bind();
 
   server.app.all('*', (req, res) => {
     handle(req, res);
